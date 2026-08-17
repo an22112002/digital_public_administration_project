@@ -1,0 +1,67 @@
+C:\Users\VH>"C:\Program Files\NAPS2\NAPS2.Console.exe" --version
+NAPS2.Console 8.3.2+70662a3160986975fb3abb3cd67a0caaa6f63290
+
+C:\Users\VH>"C:\Program Files\NAPS2\NAPS2.Console.exe" --listdevices --driver wia
+HP ScanJet Pro 3500 f1
+
+C:\Users\VH>"C:\Program Files\NAPS2\NAPS2.Console.exe" --listdevices --driver twain
+HP ScanJet Pro 3500 f1 TWAIN
+
+C:\Users\VH>"C:\Program Files\NAPS2\NAPS2.Console.exe" --listdevices --driver escl
+Canon MF240 Series (192.168.1.222)
+TOSHIBA (10.206.2.252)
+
+
+// scan
+
+// lần 2
+==============================
+NAPS2 SCAN
+==============================
+NAPS2   = C:\Program Files\NAPS2\NAPS2.Console.exe
+DRIVER  = wia
+DEVICE  = HP ScanJet Pro 3500 f1
+OUTPUT  = F:\scan\scan.jpg
+==============================
+
+No pages are in the feeder.
+No scanned pages to export.
+
+==============================
+RESULT = 1
+==============================
+Scan that bai.
+// lần 3
+==============================
+NAPS2 SCAN
+==============================
+NAPS2   = C:\Program Files\NAPS2\NAPS2.Console.exe
+DRIVER  = twain
+DEVICE  = HP ScanJet Pro 3500 f1 TWAIN
+OUTPUT  = F:\scan\scan.jpg
+==============================
+
+TWAIN error: MaxConnections
+No scanned pages to export.
+
+==============================
+RESULT = 1
+==============================
+Scan that bai.
+// lần 4
+==============================
+NAPS2 SCAN
+==============================
+NAPS2   = C:\Program Files\NAPS2\NAPS2.Console.exe
+DRIVER  = escl
+DEVICE  = Canon MF240 Series
+OUTPUT  = F:\scan\scan.jpg
+==============================
+
+Communication with the scanning device was interrupted.
+No scanned pages to export.
+
+==============================
+RESULT = 1
+==============================
+Scan that bai.

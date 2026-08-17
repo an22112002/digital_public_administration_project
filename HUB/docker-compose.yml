@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: HUB-mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: HUB_db
+      MYSQL_USER: hub_user
+      MYSQL_PASSWORD: 2e95b4d498fab9ed41cfc3a3d6ec58e9069b31b71057391a1a6ca2cef739faa3
+    restart: unless-stopped
+    command: 
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3308:3306"
+    volumes:
+      - HUB_mysql_data:/var/lib/mysql
+      - ./database/database.sql:/docker-entrypoint-initdb.d/database.sql
+
+  redis:
+    image: redis:7
+    container_name: HUB-redis-db
+    restart: unless-stopped
+    command: redis-server --requirepass redispassword
+    ports:
+      - "6380:6379"
+    volumes:
+      - HUB_redis_data:/data
+
+volumes:
+  HUB_mysql_data:
+  HUB_redis_data:
