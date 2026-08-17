@@ -173,9 +173,13 @@
 
     async function uploadFile(paper) {{
         window.pywebview.api.log("UPLOAD:", paper.name, paper.file);
+        if (paper.file === "") {
+            // Nếu không có file, bỏ qua
+            window.pywebview.api.log("No file to upload, skipping:", paper.name);
+            return;
+        }
         // 1. Click "Chọn tệp đính kèm"
         const row = await findRowByName(paper.name);
-        window.pywebview.api.log("Found row:", row?.querySelector("td:nth-child(2) p.text-justify")?.textContent);
 
         await clickUploadButton(row);
 
@@ -197,14 +201,15 @@
         await waitUploadModalClosed();
     }}
 
-    async function selectType(row, type) {{
+    // kiểu tài liệu (ko dùng)
+    // async function selectType(row, type) {{
 
-        await window.pywebview.api.log("SELECT:", type);
+    //     await window.pywebview.api.log("SELECT:", type);
 
-        // TODO:
-        // click combobox
-        // chọn option
-    }}
+    //     // TODO:
+    //     // click combobox
+    //     // chọn option
+    // }}
 
     async function syncTable() {{
 
