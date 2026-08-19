@@ -60,7 +60,6 @@
         }));
     }
 
-    const service_name = SERVICE_NAME;
     const button_send_documents_position = parseInt(BUTTON_SEND_DOCUMENTS_POSITION); // bắt đầu từ 1
     const province = PROVINCE;
     const commune = COMMUNE;

@@ -47,8 +47,7 @@ REM ==============================
     --source duplex ^
     --bitdepth color ^
     --dpi 300 ^
-    --split ^
-    -o "%OUTPUT_FOLDER%\scan_${n}.jpg"
+    -o "%OUTPUT_FOLDER%\scan.pdf"
 
 
 REM ==============================

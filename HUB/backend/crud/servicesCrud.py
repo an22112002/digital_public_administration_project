@@ -13,13 +13,13 @@ def insert_services(cursor, services: list[ServiceImport]) -> None:
         INSERT INTO services (
             title,
             realTitle,
+            category,
             url,
             buttonPosition,
-            processes,
             active
         )
         VALUES (
-            %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s
         )
     """
 
@@ -29,10 +29,6 @@ def insert_services(cursor, services: list[ServiceImport]) -> None:
             service.realTitle,
             service.url,
             service.buttonPosition,
-            json.dumps(
-                service.processes,
-                ensure_ascii=False
-            ),
             service.active
         )
         for service in services

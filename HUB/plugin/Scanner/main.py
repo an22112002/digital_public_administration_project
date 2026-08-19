@@ -68,7 +68,7 @@ async def scan_documents_to_folder(
     output_folder_path = Path(output_folder) / f"patch_{timestamp}"
     output_folder_path.mkdir(parents=True, exist_ok=True)
 
-    output_file = output_folder_path / "scan.jpg"
+    output_file = output_folder_path / "scan.pdf"  # Tên tệp PDF đầu ra
 
     try:
         result = subprocess.run(
@@ -80,7 +80,6 @@ async def scan_documents_to_folder(
                 "--source", "duplex",
                 "--bitdepth", color_mode,
                 "--dpi", "300",
-                "--split", "1",
                 "-o", str(output_file),
             ],
             capture_output=True,
@@ -108,12 +107,9 @@ async def scan_documents_to_folder(
     raw_output = f"{stdout}\n{stderr}".strip()
 
     if result.returncode == 0:
-        files = [
-            f
-            for f in output_folder_path.glob("*.jpg")
-            if f.is_file() and f.stat().st_size > 0
-        ]
-
+        # check tệp PDF đã được tạo ra chưa
+        files = list(output_folder_path.glob("*.pdf"))
+        # ko có tệp PDF nào được tạo ra, có thể là do không có giấy tờ được quét
         if not files:
             return ScanStatus.NO_DOCUMENT, "No scanned pages"
 

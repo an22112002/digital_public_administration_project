@@ -27,23 +27,26 @@ def convert_date_format(date_str: str) -> str:
 
 # Tách dữ liệu từ QR code thành các trường thông tin
 def process_data_from_qr_code(data: str) -> dict | None:
-    fields = data.split('|')
-    if len(fields) < 7:
-        return None
     try:
-        fields[3] = convert_date_format(fields[3])  # Chuyển định dạng ngày sinh
-        fields[6] = convert_date_format(fields[6])  # Chuyển định dạng ngày cấp
-    except ValueError as e:
-        return None
+        fields = data.split('|')
+        if len(fields) < 7:
+            return None
+        try:
+            fields[3] = convert_date_format(fields[3])  # Chuyển định dạng ngày sinh
+            fields[6] = convert_date_format(fields[6])  # Chuyển định dạng ngày cấp
+        except ValueError as e:
+            return None
 
-    return {
-        "CCCD_id": fields[0],
-        "fullname": fields[2],
-        "dob": fields[3],
-        "sex": fields[4],
-        "address": fields[5],
-        "issue_date": fields[6],
-    }
+        return {
+            "CCCD_id": fields[0],
+            "fullname": fields[2],
+            "dob": fields[3],
+            "sex": fields[4],
+            "address": fields[5],
+            "issue_date": fields[6],
+        }
+    except Exception:
+        return None
 
 def read_qr_code(image_path) -> dict | None:
     results = decode(Image.open(image_path))

@@ -1,63 +1,47 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from backend.services.processServices import getActiveServices
-from openpyxl import load_workbook
-from io import BytesIO
+from urllib import request
+import time
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from backend.services.processServices import getActiveServices, processWebSocket, startProcess
+
+from backend.models.processModels import StartProcessResponse
 
 process_router = APIRouter(prefix="/process", tags=["process"])
-
-@process_router.post("/services/import")
-async def import_xlsx(file: UploadFile = File(...)):
-    if not file.filename.endswith(".xlsx"):
-        raise HTTPException(
-            status_code=400,
-            detail="Chỉ file .xlsx được chấp nhận"
-        )
-
-    file_data = await file.read()
-
-    try:
-        workbook = load_workbook(
-            filename=BytesIO(file_data),
-            read_only=True,
-            data_only=True
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid XLSX file"
-        )
-
-    print(workbook.sheetnames)
-
-    for sheet_name in workbook.sheetnames:
-        worksheet = workbook[sheet_name]
-
-        rows = worksheet.iter_rows(values_only=True)
-
-        # dòng đầu tiên = header
-        headers = next(rows, None)
-
-        if not headers:
-            continue
-
-        headers = [
-            str(header).strip()
-            if header is not None
-            else None
-            for header in headers
-        ]
-
-        for row in rows:
-            data = dict(zip(headers, row))
-
-            print(sheet_name, data)
-
-    return {
-        "success": True,
-        "sheets": workbook.sheetnames
-    }
     
-@process_router.get("/services/active")
-def getActiveServices():
-    result = getActiveServices()
-    return result
+@process_router.websocket("/ws/{service_id}")
+async def start_process(websocket: WebSocket, service_id: str):
+    await websocket.accept()
+    try:
+        # gọi hàm startProcess từ service
+        timestamp = int(time.time())
+        service, documents = startProcess(service_id)
+        # gửi dữ liệu về client qua websocket
+        await websocket.send_json({
+            "service": service,
+            "documents": documents,
+            "code": "0",
+            "error": None
+        })
+        # vòng lặp lắng nghe, phản hồi
+        while True:
+            data = await websocket.receive_json()
+            # xử lý dữ liệu nhận được từ client
+            should_continue = await processWebSocket(data, service, documents, timestamp, websocket)
+            if not should_continue:
+                break
+    except ValueError as e:
+        await websocket.send_json({
+            "service": None,
+            "documents": None,
+            "code": "1",
+            "error": str(e)
+        })
+    except RuntimeError as e:
+        await websocket.send_json({
+            "service": None,
+            "documents": None,
+            "code": "2",
+            "error": str(e)
+        })
+    except WebSocketDisconnect:
+        print(f"Client disconnected from /start/{service_id}")

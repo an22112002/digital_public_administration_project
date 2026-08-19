@@ -13,7 +13,25 @@ TOSHIBA (10.206.2.252)
 
 
 // scan
+==============================
+NAPS2 SCAN
+==============================
+NAPS2   = C:\Program Files\NAPS2\NAPS2.Console.exe
+DRIVER  = wia
+DEVICE  = HP ScanJet Pro 3500 f1
+OUTPUT  =
+==============================
 
+File already exists. Use --force to overwrite. Path: F:\scan\scan_${n}.jpg
+File already exists. Use --force to overwrite. Path: F:\scan\scan_${n}.jpg
+File already exists. Use --force to overwrite. Path: F:\scan\scan_${n}.jpg
+File already exists. Use --force to overwrite. Path: F:\scan\scan_${n}.jpg
+File already exists. Use --force to overwrite. Path: F:\scan\scan_${n}.jpg
+
+==============================
+RESULT = 1
+==============================
+Scan that bai.
 // lần 2
 ==============================
 NAPS2 SCAN

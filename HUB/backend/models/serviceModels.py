@@ -1,36 +1,47 @@
 from pydantic import BaseModel, Field
 
-
 class ServiceImport(BaseModel):
     """
-    Dữ liệu của một service được đọc từ file Excel.
+    Dữ liệu của một service.
     """
 
     title: str
     realTitle: str
+    category: str
     url: str
     buttonPosition: int = 1
-    processes: list[str] = Field(default_factory=list)
     active: bool = True
 
 
-class DefaultDocumentImport(BaseModel):
+class ServiceDocumentImport(BaseModel):
     """
-    Dữ liệu của một default document được đọc từ file Excel.
+    Dữ liệu của một service document.
     """
 
     serviceID: int
-    name: str
-    description: str | None = None
+    realTitle: str
+    sourceType: str = Field(..., regex="^(SCAN|FORM)$")
     required: bool = False
-    OCRtab: str | None = None
+    formKey: str | None = None
 
 
-class ExtentionDocumentImport(BaseModel):
+class ScanRequirementImport(BaseModel):
     """
-    Dữ liệu của một extention document được đọc từ file Excel.
+    Dữ liệu của một scan requirement.
     """
 
-    name: str
-    description: str | None = None
-    OCRtab: str | None = None
+    serviceID: int
+    code: str
+    title: str
+    description: str
+    required: bool = False
+    ocr_enabled: bool = False
+
+class ServiceImportRequest(BaseModel):
+    """
+    Dữ liệu của một service import request.
+    """
+
+    services: ServiceImport
+    serviceDocuments: list[ServiceDocumentImport]
+    scanRequirements: list[ScanRequirementImport]
