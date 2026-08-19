@@ -1,45 +1,52 @@
-import type { Service } from "../../interface/services"
-import ServiceBtn from "./serviceBtn"
-
-const title = "Xã X"
+import { Link } from 'react-router-dom';
+import Header from '../../header/header';
+import aiBootsImage from '../../assets/ai boots.png';
+import type { Service } from '../../interface/services';
+import ServiceBtn from './serviceBtn';
 
 const data: Service[] = [
-    {
-        id: "1",
-        name: "Chứng thực chữ ký",
-        description: "Thủ tục chứng thực chữ ký trong các giấy tờ, văn bản (áp dụng cho cả trường hợp chứng thực điểm chỉ và trường hợp người yêu cầu chứng thực không thể ký, không thể điểm chỉ được)"
-    },
-    {
-        id: "2",
-        name: "Chứng thực hợp đồng",
-        description: "Thủ tục chứng thực hợp đồng, giao dịch liên quan đến tài sản là động sản, quyền sử dụng đất, nhà ở"
-    }
+  {
+    id: '1',
+    name: 'Đăng ký kết hôn',
+    description: 'Khai báo thông tin để thực hiện thủ tục đăng ký kết hôn theo quy định của pháp luật.'
+  },
+  {
+    id: '2',
+    name: 'Đăng ký khai sinh',
+    description: 'Khai báo thông tin để cấp giấy khai sinh cho trẻ em mới sinh một cách nhanh chóng.'
+  }
 ]
 
 export default function HomePage() {
-    return (
-        <>
-            <div>
-                <h1>{title}</h1>
+  return (
+    <div className="min-h-screen bg-[#eef5f4] px-4 py-6 text-slate-800 md:px-8">
+      <div className="mx-auto max-w-6xl">
+        <Header />
+
+        <main className="rounded-[30px] bg-white p-5 shadow-[0_30px_70px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 md:p-8">
+          <div className="mb-6 flex flex-col items-center justify-center gap-4">
+            <div className="flex w-full max-w-[360px] items-center justify-center rounded-[18px] border border-slate-200 bg-[#eef5f5] p-3 shadow-sm">
+              <img
+                src={aiBootsImage}
+                alt="AI Boots"
+                className="h-[220px] w-auto object-contain"
+              />
             </div>
-            <div>
-                Phục vụ người dân nộp tài liệu, hồ sơ trực tuyến và các dịch vụ công khác.
-            </div>
-            <div>
-                <input type="text" placeholder="Tìm kiếm dịch vụ" />
-            </div>
-            <div>
-                <div>Dịch vụ công</div>
-                {data.length === 0 ? (
-                    <div>Không có dịch vụ công nào</div>
-                ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {data.map((service) => (
-                            <ServiceBtn key={service.id} service={service} />
-                        ))}
-                    </div>
-                )}
-            </div>
-        </>
-    )
+
+            <h2 className="text-center text-2xl font-bold text-slate-800 md:text-4xl">
+              Bạn muốn thực hiện thủ tục nào hôm nay?
+            </h2>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {data.map((service) => (
+              <Link key={service.id} to="/scan" className="block">
+                <ServiceBtn service={service} />
+              </Link>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  )
 }
