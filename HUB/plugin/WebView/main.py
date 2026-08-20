@@ -4,8 +4,10 @@ from pywinauto import Desktop
 import webview
 from pathlib import Path
 from typing import Literal
-from form_auto_insert import *
+from .form_auto_insert import *
 import threading
+import time
+import os
 
 TITLE = "VNeID"
 
@@ -17,11 +19,27 @@ class DataProcess:
         self.task_name = task_name
         self.data = data
 
+    def print_out(self):
+        print(f"DataProcess: task_name={self.task_name}, data={self.data}")
+
     def set_task_name(self, task_name: PROCESSES):
         self.task_name = task_name
 
     def set_data(self, data: list[dict]):
         self.data = data
+
+    def to_dict(self) -> dict:
+        return {
+            "task_name": self.task_name,
+            "data": self.data
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            task_name=data["task_name"],
+            data=data["data"]
+        )
 
 
 # lớp SupportApi được sử dụng để hỗ trợ các chức năng liên quan đến giao diện người dùng trong ứng dụng webview. Nó cung cấp các phương thức để tương tác với cửa sổ webview, xử lý việc tải tệp và đóng cửa sổ.
@@ -31,10 +49,16 @@ class SupportApi:
         self.window = None
         self.fill_form = False
         self.fill_form_lock = threading.Lock()
+        self.websocket = None
 
     def destroy(self):
-        if webview.windows:
-            webview.windows[0].destroy()
+        try:
+            if webview.windows:
+                for window in webview.windows:
+                    window.destroy()
+        except Exception as e:
+            print("[PY] Destroy WebView error:", e)
+
         return True
 
     # tải lên file tài liệu
@@ -276,7 +300,6 @@ def autoPassSelectService(window, data: dict):
 
     js = js_path.read_text(encoding="utf-8")
 
-    service_name = data.get("service_name")
     province = data.get("province")
     commune = data.get("commune")
 
@@ -324,6 +347,9 @@ def formInsert(window, form_data, form_type: str):
 # url: URL của trang web cần hiển thị trong webview.
 # paper_input: dữ liệu đầu vào liên quan đến các giấy tờ cần xử lý
 def process_with_webview(url: str, data_process: list[DataProcess]):
+    print(
+        f"[WEBVIEW PROCESS] PID={os.getpid()} START"
+    )
     api = SupportApi()
         
     window = webview.create_window(
@@ -335,7 +361,25 @@ def process_with_webview(url: str, data_process: list[DataProcess]):
 
     window.events.loaded += lambda: on_loaded(window, data_process)
 
+    def on_window_closed():
+        print(
+            f"[WEBVIEW PROCESS] PID={os.getpid()} "
+            "WINDOW CLOSED"
+        )
+
+    window.events.closed += on_window_closed
+
+    print(
+        f"[WEBVIEW PROCESS] PID={os.getpid()} "
+        f"calling webview.start()"
+    )
+
     webview.start()
+
+    print(
+        f"[WEBVIEW PROCESS] PID={os.getpid()} "
+        f"webview.start() returned"
+    )
 
 def on_loaded(window, data_process: list[DataProcess]):
     # Thêm công cụ hỗ trợ vào giao diện webview

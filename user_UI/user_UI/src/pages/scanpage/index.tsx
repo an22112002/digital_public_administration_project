@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import Header from '../../header/header'
+import { useParams } from 'react-router-dom';
 
 export default function ScanPage() {
+  const { serviceID } = useParams<{ serviceID: string }>();
+  
   type DocumentItem = {
     id: string
     name: string

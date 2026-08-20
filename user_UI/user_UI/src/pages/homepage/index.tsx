@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import Header from '../../header/header';
 import aiBootsImage from '../../assets/ai boots.png';
-import type { Service } from '../../interface/services';
-import ServiceBtn from './serviceBtn';
+import type { Service } from '../../api/servicesAPI';
+import ServiceBtn from '../../components/serviceBtn';
+import {useEffect, useState} from "react";
+import {getServicesList, getCategories} from "../../api/servicesAPI";
 
 const data: Service[] = [
   {
@@ -18,6 +20,17 @@ const data: Service[] = [
 ]
 
 export default function HomePage() {
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    // Fetch services from the API and update the state
+    const fetchServices = async () => {
+      const servicesList = await getServicesList();
+      setServices(servicesList);
+    };
+
+    fetchServices();
+  }, []);
   return (
     <div className="min-h-screen bg-[#eef5f4] px-4 py-6 text-slate-800 md:px-8">
       <div className="mx-auto max-w-6xl">
@@ -39,8 +52,8 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {data.map((service) => (
-              <Link key={service.id} to="/scan" className="block">
+            {services.map((service) => (
+              <Link key={service.serviceID} to={`/scan/${service.serviceID}`} className="block">
                 <ServiceBtn service={service} />
               </Link>
             ))}

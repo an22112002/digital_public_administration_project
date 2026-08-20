@@ -43,19 +43,21 @@ async def get_list_scanner_devices(path_to_naps2: str, type_driver: Literal["wia
     else:
         return ["Mock Scanner 1", "Mock Scanner 2"]
 
-# Scan toàn bộ giấy tờ sang folder JPEG
 async def scan_documents_to_folder(timestamp: int, path_to_naps2: str, output_folder: str, device_name: str, driver: Literal["wia", "twain", "escl"], color_mode: Literal["color", "grayscale", "blackwhite"] = "color") -> tuple[ScanStatus, str | None]:
     output_folder_path = Path(output_folder+f"/patch_{timestamp}")
     output_folder_path.mkdir(parents=True, exist_ok=True)
-    # Giả lập việc scan thành công, lấy các file từ store và lưu vào output_folder, định dang JPEG
+    # Giả lập việc scan thành công, lấy file PDF từ store và lưu vào output_folder
     store = r"C:\Users\ADMIN\Pictures\store"
-    # đếm số lượng file trong store
-    num_files = len(list(Path(store).glob("*.jpg")))
-    for i in range(num_files):
-        # copy file từ store sang output_folder
-        src_file = Path(store) / f"image_{i+1}.jpg"
-        dst_file = output_folder_path / f"scan_{i+1}.jpg"
-        dst_file.write_bytes(src_file.read_bytes())
+    output_pdf_path = output_folder_path / f"scan.pdf"
+    # tìm file PDF trong store
+    pdf_files = list(Path(store).glob("*.pdf"))
+    if not pdf_files:
+        return ScanStatus.NO_DOCUMENT, None
+    # copy file PDF đầu tiên từ store sang output_folder
+    first_pdf = pdf_files[0]
+    with open(first_pdf, "rb") as src_file:
+        with open(output_pdf_path, "wb") as dst_file:
+            dst_file.write(src_file.read())
     return ScanStatus.SUCCESS, None
 
 

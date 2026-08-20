@@ -29,7 +29,7 @@
                 break;
             }
 
-            await sleep(5000);
+            await sleep(10000);
         }
 
         window.pywebview.api.log("Form bắt đầu nhập");

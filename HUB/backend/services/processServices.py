@@ -1,8 +1,11 @@
+import json
+import traceback
+
 from fastapi import WebSocket
 import asyncio
-from OCR.main import OCR_CCCD
+from OCR.main import processOCR
 
-from backend.crud.processCrud import get_active_services, get_service_by_id, get_documents_to_scan, get_service_documents
+from backend.crud.processCrud import get_service_by_id, get_documents_to_scan, get_service_documents
 from backend.models.processModels import StartScanRequest, DocumentFile, StartWebViewRequest, WebSocketRequest
 from backend.config import open_settings
 
@@ -12,13 +15,17 @@ import os
 import pymupdf
 from pathlib import Path
 
-from plugin.Scanner.main import ScanStatus, scan_documents_to_folder
-from plugin.WebView.main import DataProcess
+from plugin.Scanner.mock import ScanStatus, scan_documents_to_folder
+# from plugin.Scanner.main import ScanStatus, scan_documents_to_folder
 from backend.config import open_settings, SCANNER_SAVE_PATH
 from backend.utils import remove_accents
 
-def getActiveServices():
-    return get_active_services()
+from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
+from redis.asyncio import Redis
+
+from plugin.WebView.main import DataProcess
+
+redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
 
 def startProcess(service_id: str):
     # kiểm tra xem service có tồn tại không
@@ -76,7 +83,7 @@ async def scanActivate(timestamp: int, data: StartScanRequest, websocket: WebSoc
             "message": str(e)
         })
 
-async def processWebSocket(data, service: dict, required_documents: list, timestamp: int, websocket: WebSocket) -> bool:
+async def processWebSocket(data, service: dict, required_documents: list, timestamp: int, data_ready: dict, websocket: WebSocket) -> bool:
     request = WebSocketRequest(**data)
     if request.type == "start_scan":
         asyncio.create_task(scanActivate(timestamp, request.request, websocket))
@@ -87,10 +94,10 @@ async def processWebSocket(data, service: dict, required_documents: list, timest
         return True
     elif request.type == "start_webview":
         # Xử lý yêu cầu xem web
-        asyncio.create_task(readyDataForWebView(timestamp, service, required_documents, request.request, websocket))
+        asyncio.create_task(processWebView(timestamp, service, required_documents, request.request, data_ready, websocket))
         await websocket.send_json({
-            "type": "webview_data",
-            "status": "ready documents"
+            "type": "webview",
+            "status": "start data processing"
         })
         return True
     elif request.type == "close":
@@ -106,10 +113,10 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
     # thiếu tài liệu -> báo lỗi, thừa tài liệu -> thêm vào theo mẫu, đủ tài liệu -> tiếp tục
     for doc in required_documents:
         # tìm tài liệu tương ứng trong provieded_documents
-        matching_doc = next((d for d in provieded_documents if d.srID == doc['srID']), None)
+        matching_doc = next((d for d in provieded_documents if d.srID == str(doc['srID'])), None)
         if matching_doc:
             documents_data.append({
-                "srID": doc['srID'],
+                "srID": str(doc['srID']),
                 "title": doc['title'],
                 "required": doc['required'],
                 "files": matching_doc.files,
@@ -123,12 +130,12 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
             "status": "error",
             "message": "Thiếu tài liệu cần thiết."
         })
-        return
+        raise ValueError("Thiếu tài liệu cần thiết.")
     # thêm các tài liệu thừa vào documents_data
     for prov_doc in provieded_documents:
-        if prov_doc.srID.startswith("ADD"):
+        if str(prov_doc.srID).startswith("ADD"):
             documents_data.append({
-                "srID": prov_doc.srID,
+                "srID": str(prov_doc.srID),
                 "title": prov_doc.srID[4:],  # lấy tên tài liệu từ srID, ví dụ "ADD:Giấy tờ bổ sung" -> "Giấy tờ bổ sung"
                 "required": False,
                 "files": prov_doc.files,
@@ -137,19 +144,23 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
             })
     # Kiểm tra các tài liệu required có len(files) > 0 hay không, nếu không thì gửi thông báo lỗi
     for doc in documents_data:
-        if doc['required'] and not doc['files']:
+        if doc['required'] and len(doc['files']) == 0:
             await websocket.send_json({
                 "type": "webview_data",
                 "status": "error",
                 "message": f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp."
             })
-            return
+            raise ValueError(f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp.")
     # tạo các file PDF từ các file JPG ứng với mỗi tài liệu
     for doc in documents_data:
-        if doc['files']:
+        if len(doc['files']) > 0:
             output_pdf_path = os.path.join(SCANNER_SAVE_PATH, f"patch_{timestamp}", "upload", f"{remove_accents(doc['title'])}.pdf")
+            upload_folder = Path(SCANNER_SAVE_PATH, f"patch_{timestamp}", "upload")
+            upload_folder.mkdir(parents=True, exist_ok=True)
             await merge_images_to_pdf(doc['files'], output_pdf_path)
             doc['pdf_path'] = output_pdf_path
+        else:
+            doc['pdf_path'] = ""
     # xử lý các tài liệu cần ocr
     for doc in documents_data:
         if doc['ocr_enabled']:
@@ -166,14 +177,14 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
 
     # chuẩn bị dữ liệu cho webview
     settings = await open_settings()  # Mở cài đặt từ file config
-
-    url = service['url']
+    url = service.get("url", "")
     data_process = []
     data_auto_pass = {
-        "province": settings.get("province", ""),
-        "commune": settings.get("commune", ""),
-        "button_send_documents_position": 1
+        "province": settings.get("settings", {}).get("province", "Unknown"),
+        "commune": settings.get("settings", {}).get("commune", "Unknown"),
+        "button_send_documents_position": service.get("buttonPosition", 1),
     }
+    data_process.append(DataProcess(task_name="auto_pass_select_service", data=data_auto_pass))
 
     files_insert_data = []
     # thêm các tài liệu bổ sung vào files_insert_data
@@ -205,7 +216,7 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
                     matching_doc = next((d for d in documents_data if d['code'] == sr), None)
                     if matching_doc:
                         images_to_merge.extend(matching_doc['files'])
-                if images_to_merge:
+                if len(images_to_merge) > 0:
                     output_pdf_path = os.path.join(SCANNER_SAVE_PATH, f"patch_{timestamp}", "upload", f"Giay_to_{doc['sdID']}.pdf")
                     await merge_images_to_pdf(images_to_merge, output_pdf_path)
                     files_insert_data.append({
@@ -219,8 +230,12 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
             OCRDocsRequested = []
             # xử lý các tài liệu cần nhập form, data lấy từ ocr
             for sr in source_refs:
+                if sr.startswith("ocr_"):
+                    key = sr[4:]
+                else:
+                    key = sr
                 for ocr_data in ocr_final_results:
-                    if sr.remove("ocr_") == ocr_data['type']:
+                    if key == ocr_data['type']:
                         OCRDocsRequested.append(ocr_data)
             if len(OCRDocsRequested) == len(source_refs):
                 # nếu đủ số lượng tài liệu cần ocr thì ok
@@ -239,11 +254,59 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
                 "status": "error",
                 "message": f"Tài liệu cần upload: {doc['realTitle']}, chưa sẵn sàng."
             })
+            raise ValueError("Tài liệu cần upload chưa sẵn sàng.")
     # nếu tất cả các tài liệu đã sẵn sàng, gửi dữ liệu về webview
-    data_process.append(DataProcess(task_name="auto_pass_select_service", data=data_auto_pass))
     data_process.append(DataProcess(task_name="insert_file_table", data=files_insert_data))
+    for dp in data_process:
+        dp.print_out()
     return url, data_process
-        
+
+# process webview
+async def processWebView(timestamp: int, service: dict, required_documents: list, webview_request: StartWebViewRequest, data_ready: dict, websocket: WebSocket):
+    try:
+        if not data_ready['status']:
+            url, data_process = await readyDataForWebView(timestamp, service, required_documents, webview_request, websocket)
+            data_ready['status'] = True
+            data_ready['url'] = url
+            data_ready['data_process'] = data_process
+        await websocket.send_json({
+            "type": "webview",
+            "status": "data_ready"
+        })
+        await websocket.send_json({
+            "type": "webview",
+            "status": "started"
+        })
+        # gửi redis để worker webview nhận và xử lý
+        await redis_client.rpush(
+            "webview",
+            json.dumps({
+                "start": True,
+                "data": {
+                    "url": data_ready["url"],
+                    "data_process": [
+                        dp.to_dict()
+                        for dp in data_ready["data_process"]
+                    ]
+                }
+            }, ensure_ascii=False)
+        )
+
+        await websocket.send_json({
+            "type": "webview",
+            "status": "started"
+        })
+    except Exception as e:
+        print(f"Error in processWebView: {e}")
+        traceback.print_exc()
+        try:
+            await websocket.send_json({
+                "type": "webview",
+                "status": "error",
+                "message": str(e)
+            })
+        except Exception:
+            pass
 
 # nối các file JPG thành một file PDF ứng với mỗi tài liệu
 async def merge_images_to_pdf(images: list[str], output_pdf_path: str):
@@ -294,31 +357,12 @@ async def OCRDocuments(ocr_data: list[dict]):
     for doc in ocr_data:
         code = doc['code']
         files = doc['files']
-        # thực hiện OCR cho từng file trong files
-        ocr_results = []
-        for file in files:
-            ocr_result = await processOCR(code, file)
-            if ocr_result:
-                ocr_results.append(ocr_result)
-        if len(ocr_results) > 0:
-            ocr_final_results.append(
-                ocr_results[0]  # chỉ lấy kết quả OCR đầu tiên, nếu có nhiều file thì chỉ lấy kết quả của file đầu tiên
-            )
+        # thực hiện OCR cho từng document cần OCR
+        result = await processOCR(code, files)
+        if result is not None:
+            ocr_final_results.append(result)
+    print(f"OCR final results: {ocr_final_results}")
     return ocr_final_results
 
-async def processOCR(code: str, path_to_file: str):
-    if code == "cccd_huband":
-        result = await OCR_CCCD(path_to_file)
-        if result:
-            result["type"] = "cccd_huband"
-            return result
-        return None
-    if code == "cccd_wife":
-        result = await OCR_CCCD(path_to_file)
-        if result:
-            result["type"] = "cccd_wife"
-            return result
-        return None
-    # mở rộng cho các loại tài liệu khác nếu cần
-    return None
+
     

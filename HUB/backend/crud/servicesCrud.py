@@ -1,5 +1,6 @@
 from backend.models.serviceModels import ServiceImport
 import json
+from database.index import db
 
 def insert_services(cursor, services: list[ServiceImport]) -> None:
     """
@@ -69,3 +70,15 @@ def delete_all_services(cursor) -> None:
     cursor.execute("""
         DELETE FROM services
     """)
+
+def get_active_services():
+    with db.get_cursor() as cursor:
+        sql = "SELECT serviceID, title, realTitle, category FROM `services` WHERE active = TRUE"
+        cursor.execute(sql)
+        return cursor.fetchall()
+
+def get_categories():
+    with db.get_cursor() as cursor:
+        sql = "SELECT DISTINCT category FROM `services`"
+        cursor.execute(sql)
+        return [row["category"] for row in cursor.fetchall()]

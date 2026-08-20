@@ -1,6 +1,6 @@
 import time
 
-from auto_press_keyboard import press_key, reset, is_edited
+from .auto_press_keyboard import press_key, reset, is_edited
 from pywinauto import keyboard
 import pyperclip
 
@@ -79,7 +79,7 @@ async def formDangKyKetHonInsert(form_data: list[dict]):
     elif len(form_data) == 1:
         # chỉ có 1 người: thông tin cá nhân người điền sẽ được VNeiD điền sẵn, chỉ cần điền thông tin người còn lại
         person = form_data[0]
-        if person["type"] == "husband":
+        if person["type"] == "cccd_husband":
             # người điền là vợ, người cần điền là chồng
             # start
             await press_key("tab", 20)  # tab đến phần thông tin bổ sung của vợ
@@ -88,7 +88,7 @@ async def formDangKyKetHonInsert(form_data: list[dict]):
             await fill_extention()
             # end
             return
-        elif person["type"] == "wife":
+        elif person["type"] == "cccd_wife":
             # người điền là chồng, người cần điền là vợ
             # start
             await insertPersonalInfo(person)
@@ -99,8 +99,8 @@ async def formDangKyKetHonInsert(form_data: list[dict]):
             return
     elif len(form_data) == 2:
         # có 2 người: điền thông tin cá nhân của cả 2 người, trong đó có 1 người đã được VNeID điền chỉ cần điền lại địa chỉ
-        husband = next((p for p in form_data if p["type"] == "husband"), None)
-        wife = next((p for p in form_data if p["type"] == "wife"), None)
+        husband = next((p for p in form_data if p["type"] == "cccd_husband"), None)
+        wife = next((p for p in form_data if p["type"] == "cccd_wife"), None)
         # start
         await insertPersonalInfo(wife)  # điền thông tin cá nhân của vợ
         await fill_extention()

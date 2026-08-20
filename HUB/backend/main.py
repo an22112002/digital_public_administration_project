@@ -13,9 +13,11 @@ from backend.routers.settingsRouter import settings_router
 from backend.routers.processRouter import process_router
 from backend.routers.serviceRouter import service_router
 
+from backend.worker.Manager import WorkerManager
 from database.index import db
 
 redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
+worker_manager = WorkerManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,12 +36,13 @@ async def lifespan(app: FastAPI):
         else:
             print("[Error] Redis connection failed")
             raise Exception("Redis connection failed")
+        await worker_manager.start()
     except Exception as e:
         print(f"[Error] Khởi động server thất bại: {e}")
         # Dừng khởi động server nếu có lỗi
         raise
     yield
-    # await worker_manager.stop()
+    await worker_manager.stop()
     # Kết thúc server
     print("[End] Shutdown")
 

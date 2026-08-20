@@ -1,30 +1,123 @@
 import asyncio
-import pymupdf
-from pathlib import Path
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import uvicorn
+
+from plugin.WebView.main import process_with_webview, DataProcess
 
 
-def splitPDF(pdf_path: str, output_folder: str):
-    output_path = Path(output_folder)
-    output_path.mkdir(parents=True, exist_ok=True)
+app = FastAPI()
 
-    pdf = pymupdf.open(pdf_path)
+
+@app.websocket("/test-webview")
+async def test_webview(websocket: WebSocket):
+    await websocket.accept()
+
+    print("[WS] connected")
 
     try:
-        for i, page in enumerate(pdf):
-            pix = page.get_pixmap(dpi=300)
+        # =========================
+        # Giả lập dữ liệu backend chuẩn bị
+        # =========================
 
-            image_path = output_path / f"page_{i + 1}.jpg"
+        url = (
+            "https://dichvucong.gov.vn/"
+            "tim-kiem-thu-tuc-hanh-chinh"
+            "?formalityId=019d2bfd-95fa-70ca-93fd-4cab11b87897"
+            "&formalityCaseId=019db06b-1e13-773f-bd01-af4904294075"
+        )
 
-            pix.save(str(image_path))
+        province = "Thành phố Hà Nội"
+        commune = "Phường Ba Đình"
 
-    finally:
-        pdf.close()
+        data_auto_pass = {
+            "province": province,
+            "commune": commune,
+            "button_send_documents_position": 1
+        }
 
-async def test_splitPDF():
-    pdf_path = r"D:\test\test.pdf"
-    output_folder = r"D:\test_pdf"
-    await splitPDF(pdf_path, output_folder)
-    return output_folder
+        paper_input = [
+            {
+                "name": "Giấy tờ 1",
+                "file": r"D:\test\test.pdf"
+            },
+            {
+                "name": "Dự thảo giao dịch",
+                "file": r"D:\test\test2.pdf"
+            },
+            {
+                "name": "CCCD",
+                "file": r"D:\test\test3.pdf"
+            },
+        ]
+
+        data_process = [
+            DataProcess(
+                task_name="auto_pass_select_service",
+                data=data_auto_pass
+            ),
+            DataProcess(
+                task_name="insert_file_table",
+                data=paper_input
+            )
+        ]
+
+        # =========================
+        # Báo client
+        # =========================
+
+        await websocket.send_json({
+            "type": "webview",
+            "status": "preparing"
+        })
+
+        print("[WS] starting webview")
+
+        # =========================
+        # Start WebView
+        # =========================
+
+        await asyncio.to_thread(
+            process_with_webview,
+            url,
+            data_process
+        )
+
+        print("[WS] webview closed")
+
+        await websocket.send_json({
+            "type": "webview",
+            "status": "closed"
+        })
+
+        # Giữ websocket sống để test tiếp
+        while True:
+            data = await websocket.receive_json()
+
+            print("[WS] received:", data)
+
+            if data.get("type") == "close":
+                break
+
+    except WebSocketDisconnect:
+        print("[WS] client disconnected")
+
+    except Exception as e:
+        print("[WS] error:", e)
+
+        try:
+            await websocket.send_json({
+                "type": "webview",
+                "status": "error",
+                "message": str(e)
+            })
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
-    asyncio.run(test_splitPDF())
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=8001
+    )
