@@ -1,0 +1,74 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: HUB-mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: HUB_db
+      MYSQL_USER: hub_user
+      MYSQL_PASSWORD: 2e95b4d498fab9ed41cfc3a3d6ec58e9069b31b71057391a1a6ca2cef739faa3
+    restart: unless-stopped
+    command: 
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3308:3306"
+    volumes:
+      - HUB_mysql_data:/var/lib/mysql
+      - ./HUB/database/database.sql:/docker-entrypoint-initdb.d/database.sql
+    networks:
+      - hub-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: HUB-redis-db
+    restart: unless-stopped
+    command: redis-server --requirepass redispassword
+    ports:
+      - "6380:6379"
+    volumes:
+      - HUB_redis_data:/data
+    networks:
+      - hub-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+
+  hub-fe:
+    build:
+      context: ./HUB_fe/HUB_fe
+      dockerfile: Dockerfile
+    container_name: HUB-fe
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    networks:
+      - hub-network
+    restart: unless-stopped
+
+  user-ui:
+    build:
+      context: ./user_UI/user_UI
+      dockerfile: Dockerfile
+    container_name: HUB-user-ui
+    ports:
+      - "5174:5174"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    networks:
+      - hub-network
+    restart: unless-stopped
+
+volumes:
+  HUB_mysql_data:
+  HUB_redis_data:
+
+networks:
+  hub-network:
+    driver: bridge

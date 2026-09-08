@@ -1,94 +1,47 @@
-import time
+import time, asyncio, shutil, os
+from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.services.processServices import processWebSocket, startProcess
-
-from backend.models.processModels import StartProcessResponse
-
-process_router = APIRouter(prefix="/process", tags=["process"])
-
+from backend.log.main import log_exception
+from contextlib import asynccontextmanager
 
 # ----------------------------------
-from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
+from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, SCANNER_SAVE_PATH
 from redis.asyncio import Redis
-from plugin.WebView.main import DataProcess
-import json
 
 redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
 #----------------------------------
+SCANNER_SAVE = Path(SCANNER_SAVE_PATH)
+PATCH_PREFIX = "patch_"
 
-@process_router.websocket("/test")
-async def test_websocket(websocket: WebSocket):
-    await websocket.accept()
+PATCH_EXPIRE_SECONDS = 5 * 60   # 5 phút
+CLEANUP_INTERVAL_SECONDS = 3 * 60   # 3 phút
+
+working_timestamps: set[int] = set()
+
+@asynccontextmanager
+async def lifespan(router: APIRouter):
+
+    cleanup_task = asyncio.create_task(
+        cleanup_old_patch_folders()
+    )
+
     try:
-        url = (
-            "https://dichvucong.gov.vn/"
-            "tim-kiem-thu-tuc-hanh-chinh"
-            "?formalityId=019d2bfd-95fa-70ca-93fd-4cab11b87897"
-            "&formalityCaseId=019db06b-1e13-773f-bd01-af4904294075"
+        yield
+
+    finally:
+        cleanup_task.cancel()
+
+        await asyncio.gather(
+            cleanup_task,
+            return_exceptions=True,
         )
 
-        province = "Thành phố Hà Nội"
-        commune = "Phường Ba Đình"
+process_router = APIRouter(prefix="/process", lifespan=lifespan, tags=["process"])
 
-        data_auto_pass = {
-            "province": province,
-            "commune": commune,
-            "button_send_documents_position": 1
-        }
 
-        paper_input = [
-            {
-                "name": "Giấy tờ 1",
-                "file": r"D:\test\test.pdf"
-            },
-            {
-                "name": "Dự thảo giao dịch",
-                "file": r"D:\test\test2.pdf"
-            },
-            {
-                "name": "CCCD",
-                "file": r"D:\test\test3.pdf"
-            },
-        ]
-
-        data_process = [
-            DataProcess(
-                task_name="auto_pass_select_service",
-                data=data_auto_pass
-            ),
-            DataProcess(
-                task_name="insert_file_table",
-                data=paper_input
-            )
-        ]
-        await redis_client.rpush(
-            "webview",
-            json.dumps({
-                "start": True,
-                "data": {
-                    "url": url,
-                    "data_process": [
-                        dp.to_dict()
-                        for dp in data_process
-                    ]
-                }
-            }, ensure_ascii=False)
-        )
-
-        await websocket.send_json({
-            "type": "webview",
-            "status": "started"
-        })
-        while True:
-            d = await websocket.receive_text()
-            print(f"Received from client: {d}")
-            if d == "exit":
-                break
-        
-    except WebSocketDisconnect:
-        print("Client disconnected from /test")
-    
+ 
 @process_router.websocket("/service/{service_id}")
 async def start_process(websocket: WebSocket, service_id: str):
 
@@ -97,7 +50,11 @@ async def start_process(websocket: WebSocket, service_id: str):
     try:
         # gọi hàm startProcess từ service
         timestamp = int(time.time())
+        working_timestamps.add(timestamp)
         service, documents = startProcess(service_id)
+        for doc in documents:
+            doc["srID"] = str(doc["srID"])
+            doc["required"] = bool(doc["required"])
         data_ready = {
             "status": False,
             "url": None,
@@ -133,3 +90,69 @@ async def start_process(websocket: WebSocket, service_id: str):
         })
     except WebSocketDisconnect:
         print(f"Client disconnected from /start/{service_id}")
+    finally:
+        working_timestamps.discard(timestamp)
+
+# xóa các folder patch cũ sau một khoảng thời gian
+async def cleanup_old_patch_folders():
+    """
+    Tự động xóa các patch_<timestamp> đã cũ hơn 5 phút.
+
+    Không xóa các patch đang nằm trong working_timestamps.
+    """
+
+    while True:
+        try:
+            now = int(time.time())
+            expire_timestamp = now - PATCH_EXPIRE_SECONDS
+
+            if SCANNER_SAVE.exists():
+                for folder in SCANNER_SAVE.iterdir():
+
+                    # Không phải folder
+                    if not folder.is_dir():
+                        continue
+
+                    # Không đúng format patch_<timestamp>
+                    if not folder.name.startswith(PATCH_PREFIX):
+                        continue
+
+                    timestamp_text = folder.name[len(PATCH_PREFIX):]
+
+                    # timestamp không hợp lệ
+                    if not timestamp_text.isdigit():
+                        continue
+
+                    timestamp = int(timestamp_text)
+
+                    # ------------------------------------------------
+                    # Đang được sử dụng -> KHÔNG XÓA
+                    # ------------------------------------------------
+                    if timestamp in working_timestamps:
+                        continue
+
+                    # ------------------------------------------------
+                    # Chưa quá 5 phút -> KHÔNG XÓA
+                    # ------------------------------------------------
+                    if timestamp > expire_timestamp:
+                        continue
+
+                    # ------------------------------------------------
+                    # Đã quá 5 phút -> XÓA
+                    # ------------------------------------------------
+                    try:
+                        shutil.rmtree(folder)
+
+                    except Exception as e:
+                        log_exception(e, "HUB")
+                        print(
+                            f"[CLEANUP] Failed to delete "
+                            f"{folder}: {e}"
+                        )
+
+        except Exception as e:
+            log_exception(e, "HUB")
+            print(f"[CLEANUP] Error: {e}")
+
+        # Chờ trước lần cleanup tiếp theo
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)

@@ -4,14 +4,21 @@ from pywinauto import Desktop
 import webview
 from pathlib import Path
 from typing import Literal
-from .form_auto_insert import *
+from plugin.WebView.forms.form_dangKyKetHon import formDangKyKetHonInsert
+from plugin.WebView.forms.form_caiChinhHoTich import formCaiChinhHoTichInsert
+from plugin.WebView.forms.form_xacNhanTinhTrangHonNhan import formXacNhanTinhTrangHonNhanInsert
 import threading
-import time
 import os
+import win32gui
+import win32con
+import win32api
+import win32process
+import ctypes
+import time
+
+PROCESSES = Literal["auto_pass_select_service", "insert_file_table", "form_dangKyKetHon", "form_caiChinhHoTich", "form_xacNhanTinhTrangHonNhan"]
 
 TITLE = "VNeID"
-
-PROCESSES = Literal["auto_pass_select_service", "insert_file_table", "form_dangKyKetHon"]
 
 class DataProcess:
 
@@ -41,15 +48,14 @@ class DataProcess:
             data=data["data"]
         )
 
-
 # lớp SupportApi được sử dụng để hỗ trợ các chức năng liên quan đến giao diện người dùng trong ứng dụng webview. Nó cung cấp các phương thức để tương tác với cửa sổ webview, xử lý việc tải tệp và đóng cửa sổ.
 class SupportApi:
 
-    def __init__(self):
+    def __init__(self, debug=False):
         self.window = None
         self.fill_form = False
         self.fill_form_lock = threading.Lock()
-        self.websocket = None
+        self.debug = debug
 
     def destroy(self):
         try:
@@ -57,7 +63,8 @@ class SupportApi:
                 for window in webview.windows:
                     window.destroy()
         except Exception as e:
-            print("[PY] Destroy WebView error:", e)
+            if self.debug:
+                print("[PY] Destroy WebView error:", e)
 
         return True
 
@@ -77,10 +84,12 @@ class SupportApi:
 
             try:
                 desktop = Desktop(backend="uia")
-                # print("Desktop windows:", [w.window_text() for w in desktop.windows()])
+                if self.debug:
+                    print("Desktop windows:", [w.window_text() for w in desktop.windows()])
 
                 browser = desktop.window(title=TITLE)
-                # print("Browser window:", browser.window_text())
+                if self.debug:
+                    print("Browser window:", browser.window_text())
 
                 dialogs = [
                     w for w in browser.descendants(control_type="Window")
@@ -89,13 +98,15 @@ class SupportApi:
 
                 if dialogs:
                     open_dialog = dialogs[-1]
-                    # print("Found Open dialog:", open_dialog.window_text())
+                    if self.debug:
+                        print("Found Open dialog:", open_dialog.window_text())
                     break
                 else:
                     open_dialog = None
 
             except Exception as e:
-                print("Find dialog error:", e)
+                if self.debug:
+                    print("Find dialog error:", e)
 
         if open_dialog is None:
             raise RuntimeError("Không tìm thấy dialog Open")
@@ -108,12 +119,13 @@ class SupportApi:
 
         for e in open_dialog.descendants(control_type="Edit"):
             try:
-                # print(
-                #     "EDIT:",
-                #     repr(e.window_text()),
-                #     "automation_id:",
-                #     e.element_info.automation_id
-                # )
+                if self.debug:
+                    print(
+                        "EDIT:",
+                        repr(e.window_text()),
+                        "automation_id:",
+                        e.element_info.automation_id
+                    )
 
                 if e.element_info.automation_id == "1148":
                     edit = e
@@ -139,12 +151,13 @@ class SupportApi:
         for ct in control_type:
             for b in open_dialog.descendants(control_type=ct):
                 try:
-                    # print(
-                    #     "BUTTON:",
-                    #     repr(b.window_text()),
-                    #     "automation_id:",
-                    #     b.element_info.automation_id
-                    # )
+                    if self.debug:
+                        print(
+                            "BUTTON:",
+                            repr(b.window_text()),
+                            "automation_id:",
+                            b.element_info.automation_id
+                        )
 
                     if b.window_text().strip() == "Open" and b.element_info.automation_id == "1":
                         button = b
@@ -158,36 +171,47 @@ class SupportApi:
 
         button.click_input()
 
-        print("Python end")
+        if self.debug:
+            print("Python end")
 
         return True
 
     # điền form
     def form_fill(self, form_data, form_type):
         if not self.fill_form_lock.acquire(blocking=False):
-            print("[PY] FORM FILL ALREADY RUNNING -> SKIP")
+            if self.debug:
+                print("[PY] FORM FILL ALREADY RUNNING -> SKIP")
             return False
         try:
             if self.fill_form:
-                print("[PY] FORM ALREADY DONE -> SKIP")
+                if self.debug:
+                    print("[PY] FORM ALREADY DONE -> SKIP")
                 return False
             self.fill_form = True
-            print("[PY] ===== FORM INSERT START =====")
+            if self.debug:
+                print("[PY] ===== FORM INSERT START =====")
             asyncio.run(self._form_fill(form_data, form_type))
-            print("[PY] ===== FORM INSERT DONE =====")
+            if self.debug:
+                print("[PY] ===== FORM INSERT DONE =====")
             return True
 
         except Exception as e:
-            print("[PY] FORM INSERT ERROR:", e)
+            if self.debug:
+                print("[PY] FORM INSERT ERROR:", e)
             # cho phép retry nếu fill thất bại
             self.fill_form = False
             raise
         finally:
             self.fill_form_lock.release()
- 
+
+    # UPDATE: thêm tham số form_type để xác định loại form cần điền
     async def _form_fill(self, form_data, form_type:str):
         if form_type == "form_dangKyKetHon":
             await formDangKyKetHonInsert(form_data)
+        elif form_type == "form_caiChinhHoTich":
+            await formCaiChinhHoTichInsert(form_data)
+        elif form_type == "form_xacNhanTinhTrangHonNhan":
+            await formXacNhanTinhTrangHonNhanInsert(form_data)
 
         return True
 
@@ -196,8 +220,87 @@ class SupportApi:
         return True
 
     def log(self, *args):
-        print("[JS]", *args)
+        if self.debug:
+            print("[JS]", *args)
         return True
+
+
+def focus_window(title: str):
+    hwnd = win32gui.FindWindow(None, title)
+
+    if not hwnd:
+        print(f"[WEBVIEW] Cannot find window: {title}")
+        return
+
+    print(f"[WEBVIEW] HWND={hwnd}")
+
+    # Restore nếu đang minimize
+    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+    # Thread sở hữu WebView
+    target_thread_id, _ = win32process.GetWindowThreadProcessId(hwnd)
+
+    # Thread đang giữ foreground
+    foreground_hwnd = win32gui.GetForegroundWindow()
+
+    if foreground_hwnd:
+        foreground_thread_id, _ = (
+            win32process.GetWindowThreadProcessId(
+                foreground_hwnd
+            )
+        )
+    else:
+        foreground_thread_id = 0
+
+    current_thread_id = win32api.GetCurrentThreadId()
+
+    attached = False
+
+    try:
+        # Attach current thread với foreground thread
+        if (
+            foreground_thread_id
+            and foreground_thread_id != current_thread_id
+        ):
+            ctypes.windll.user32.AttachThreadInput(
+                current_thread_id,
+                foreground_thread_id,
+                True
+            )
+            attached = True
+
+        # Attach current thread với thread của WebView
+        if target_thread_id != current_thread_id:
+            ctypes.windll.user32.AttachThreadInput(
+                current_thread_id,
+                target_thread_id,
+                True
+            )
+
+        # Activate / foreground
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+        win32gui.SetForegroundWindow(hwnd)
+
+        print("[WEBVIEW] Window focused")
+
+    except Exception as e:
+        print(f"[WEBVIEW] Focus error: {e}")
+
+    finally:
+        if target_thread_id != current_thread_id:
+            ctypes.windll.user32.AttachThreadInput(
+                current_thread_id,
+                target_thread_id,
+                False
+            )
+
+        if attached:
+            ctypes.windll.user32.AttachThreadInput(
+                current_thread_id,
+                foreground_thread_id,
+                False
+            )
 
 # tự động ấn nút Nộp hồ sơ
 def btnNopHoSoClick(window):
@@ -219,79 +322,68 @@ def btnNopHoSoClick(window):
 def btnXacNhanClick(window):
     window.evaluate_js("""
     (() => {
-        const timer = setInterval(() => {
+        if (window.__xacNhanTimer) {
+            clearInterval(window.__xacNhanTimer);
+        }
+
+        window.__xacNhanTimer = setInterval(() => {
             const btn = [...document.querySelectorAll("button")]
                 .find(b => b.textContent.trim() === "Xác nhận");
 
             if (btn) {
+                console.log("[AUTO] Click Xác nhận");
+
+                clearInterval(window.__xacNhanTimer);
+                window.__xacNhanTimer = null;
+
                 btn.click();
-                clearInterval(timer);
             }
-        }, 1000);
+        }, 500);
+
+        setTimeout(() => {
+            if (window.__xacNhanTimer) {
+                clearInterval(window.__xacNhanTimer);
+                window.__xacNhanTimer = null;
+
+                console.log("[AUTO] Timeout: không tìm thấy Xác nhận");
+            }
+        }, 30000);
+
+        return true;
+    })();
+    """)
+
+# thoothoogobsa nếu có text: can't reach this page, tạo box nhỏ top left để thông báo hãy chờ
+def checkCantReachThisPage(window):
+    window.evaluate_js("""
+    (() => {
+        const content = document.body.textContent || "";
+        if (content.includes("can't reach this page")) {
+            const box = document.createElement("div");
+            box.style.position = "fixed";
+            box.style.width = "400px";
+            box.style.height = "auto";
+            box.style.top = "10px";
+            box.style.left = "10px";
+            box.style.backgroundColor = "white";
+            box.style.color = "black";
+            box.style.padding = "10px";
+            box.style.zIndex = "9999";
+            box.textContent = "Không thể truy cập trang web. Web Dịch Vụ Công có thể đang có quá nhiều truy cập. Vui lòng chờ hoặc thử reload lại trang. Việc mất kết nối có thể mất vài phút để tự khôi phục.";
+            document.body.appendChild(box);
+        }
+        return true;
     })();
     """)
 
 # hàm thêm các công cụ hỗ trợ vào giao diện webview, bao gồm nút Reload và nút Close. 
 # Nút Reload sẽ tải lại trang web hiện tại, trong khi nút Close sẽ đóng cửa sổ webview.
 def addTools(window):
-    window.evaluate_js("""
-    (() => {
-        if (document.getElementById("pywebview-tools")) {
-            clearInterval(timer);
-            return;
-        }
-        const timer = setInterval(() => {
+    js_path = Path(__file__).parent / "js" / "tools.js"
+    
+    js = js_path.read_text(encoding="utf-8")
 
-            if (!document.body) {
-                return;
-            }
-
-            if (document.getElementById("pywebview-tools")) {
-                clearInterval(timer);
-                return;
-            }
-
-            clearInterval(timer);
-
-            const tools = document.createElement("div");
-            tools.id = "pywebview-tools";
-
-            Object.assign(tools.style, {
-                position: "fixed",
-                top: "10px",
-                right: "10px",
-                zIndex: "999999",
-                backgroundColor: "#fff",
-                padding: "8px",
-                border: "1px solid #ccc",
-                borderRadius: "6px",
-                display: "flex",
-                gap: "6px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
-            });
-
-            const btnReload = document.createElement("button");
-            btnReload.textContent = "Reload";
-
-            btnReload.onclick = () => {
-                window.location.reload();
-            };
-
-            const btnClose = document.createElement("button");
-            btnClose.textContent = "Close";
-
-            btnClose.onclick = () => {
-                window.pywebview.api.destroy();
-            };
-
-            tools.appendChild(btnReload);
-            tools.appendChild(btnClose);
-
-            document.body.appendChild(tools);
-
-        }, 100);
-    })();
-    """)
+    window.evaluate_js(js)
 
 # ------------------- các hàm gốc từ js ngoài --------------------
 # tự động tìm dịch vụ công phù hợp với tỉnh, xã
@@ -361,6 +453,23 @@ def process_with_webview(url: str, data_process: list[DataProcess]):
 
     window.events.loaded += lambda: on_loaded(window, data_process)
 
+    def on_window_shown():
+        print(
+            f"[WEBVIEW PROCESS] PID={os.getpid()} "
+            "WINDOW SHOWN"
+        )
+
+        time.sleep(0.2)
+
+        focus_window(TITLE)
+
+    window.events.shown += on_window_shown
+
+    print(
+        f"[WEBVIEW PROCESS] PID={os.getpid()} "
+        "calling webview.start()"
+    )
+
     def on_window_closed():
         print(
             f"[WEBVIEW PROCESS] PID={os.getpid()} "
@@ -388,6 +497,8 @@ def on_loaded(window, data_process: list[DataProcess]):
     # tự động ấn nút Nộp hồ sơ và Xác nhận khi trang web được tải xong
     # btnNopHoSoClick(window)
     btnXacNhanClick(window)
+
+    checkCantReachThisPage(window)
 
     for process in data_process:
         if process.task_name == "auto_pass_select_service":

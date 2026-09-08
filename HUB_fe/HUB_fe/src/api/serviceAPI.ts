@@ -1,13 +1,20 @@
 import HUB_api from "./base";
 import type { UpdateResponse } from "./base";
 
-export async function importFileXLSX(file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await HUB_api.post("/services/xlsx", formData, {
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-    });
-    return response.data as UpdateResponse;
+export interface Service {
+    serviceID: string | number;
+    title: string;
+    realTitle: string;
+    category: string;
+    active: boolean;
+}
+
+export async function getServices() {
+    const response = await HUB_api.get<Service[]>('/services/all');
+    return response.data;
+}
+
+export async function updateServiceActive(serviceId: Service['serviceID'], active: boolean) {
+    const response = await HUB_api.put<UpdateResponse>(`/services/${serviceId}/active`, { active });
+    return response.data;
 }

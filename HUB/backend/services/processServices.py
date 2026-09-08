@@ -1,12 +1,17 @@
 import json
 import traceback
+import time
+import sys
+import base64
+import binascii
+import uuid
 
 from fastapi import WebSocket
 import asyncio
 from OCR.main import processOCR
 
 from backend.crud.processCrud import get_service_by_id, get_documents_to_scan, get_service_documents
-from backend.models.processModels import StartScanRequest, DocumentFile, StartWebViewRequest, WebSocketRequest
+from backend.models.processModels import StartScanRequest, StartWebViewRequest, WebSocketRequest
 from backend.config import open_settings
 
 # from PyPDF2 import PdfReader
@@ -14,11 +19,11 @@ from backend.config import open_settings
 import os
 import pymupdf
 from pathlib import Path
-
-from plugin.Scanner.mock import ScanStatus, scan_documents_to_folder
-# from plugin.Scanner.main import ScanStatus, scan_documents_to_folder
+# mock:main
+from plugin.Scanner.main import ScanStatus, scan_documents_to_folder
 from backend.config import open_settings, SCANNER_SAVE_PATH
 from backend.utils import remove_accents
+from backend.log.main import log_exception
 
 from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
 from redis.asyncio import Redis
@@ -26,6 +31,25 @@ from redis.asyncio import Redis
 from plugin.WebView.main import DataProcess
 
 redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
+
+
+def parse_add_document_title(sr_id: str) -> str:
+    """
+    Chuẩn hóa tiêu đề tài liệu ADD từ srID.
+    Hỗ trợ các dạng:
+    - ADD:Tên tài liệu
+    - ADD:Tên tài liệu:1724669999 (timestamp để định danh tạm phía UI)
+    """
+    if not sr_id.startswith("ADD:"):
+        return sr_id
+
+    raw_title = sr_id[4:]
+    parts = raw_title.rsplit(":", 1)
+
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[0].strip()
+
+    return raw_title.strip()
 
 def startProcess(service_id: str):
     # kiểm tra xem service có tồn tại không
@@ -41,19 +65,33 @@ def startProcess(service_id: str):
     return service, documents
 
 async def scanActivate(timestamp: int, data: StartScanRequest, websocket: WebSocket):
+    # Force stdout/stderr to UTF-8
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(
+            encoding="utf-8",
+            errors="replace"
+        )
+
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(
+            encoding="utf-8",
+            errors="replace"
+        )
     try:
         settings = await open_settings()  # Mở cài đặt từ file config
 
-        path_to_naps2 = settings.get("path_to_naps2", "")
+        path_to_naps2 = settings.get("settings", {}).get("naps2_path", "")
         output_folder = SCANNER_SAVE_PATH
         device_name = data.scanner 
         driver = data.driver
         color_mode = "color"
+        filename = f"scan_{int(time.time())}"
 
         scan_status, error_message = await scan_documents_to_folder(
             timestamp=timestamp,
             path_to_naps2=path_to_naps2,
             output_folder=output_folder,
+            filename=filename,
             device_name=device_name,
             driver=driver,
             color_mode=color_mode
@@ -61,9 +99,16 @@ async def scanActivate(timestamp: int, data: StartScanRequest, websocket: WebSoc
 
         if scan_status == ScanStatus.SUCCESS:
             # đọc file PDF vừa được tạo ra và chia nó ra thành các ảnh JPG
-            pdf_path = os.path.join(output_folder, f"patch_{timestamp}", "scan.pdf")
+            pdf_path = os.path.join(output_folder, f"patch_{timestamp}", f"{filename}.pdf")
+
             output_folder_for_images = os.path.join(output_folder, f"patch_{timestamp}", "images")
-            images_paths = await splitPDF(pdf_path, output_folder_for_images)
+            os.makedirs(output_folder_for_images, exist_ok=True)
+            
+            begin_int = await count_images_in_folder(output_folder_for_images)
+            
+            await splitPDF(pdf_path, begin_int, output_folder_for_images)
+            
+            images_paths = await get_images_from_folder(timestamp, output_folder_for_images)
 
             await websocket.send_json({
                 "type": "scan_status",
@@ -77,10 +122,80 @@ async def scanActivate(timestamp: int, data: StartScanRequest, websocket: WebSoc
                 "message": error_message
             })
     except Exception as e:
+        log_exception(e, "HUB")
         await websocket.send_json({
             "type": "scan_status",
             "status": "error",
             "message": str(e)
+        })
+
+async def processImportFile(timestamp: int, data, websocket: WebSocket):
+    # Force stdout/stderr to UTF-8
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(
+            encoding="utf-8",
+            errors="replace"
+        )
+
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(
+            encoding="utf-8",
+            errors="replace"
+        )
+    try:
+        filename = Path(data.filename).name
+        if Path(filename).suffix.lower() != ".pdf":
+            raise ValueError("Chỉ chấp nhận file PDF.")
+
+        encoded_file = data.file
+        if encoded_file.startswith("data:"):
+            header, separator, encoded_file = encoded_file.partition(",")
+            if not separator or ";base64" not in header.lower():
+                raise ValueError("Nội dung file không hợp lệ.")
+
+        try:
+            pdf_bytes = base64.b64decode(encoded_file, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("Nội dung file không hợp lệ.") from exc
+
+        if not pdf_bytes.startswith(b"%PDF"):
+            raise ValueError("File được chọn không phải PDF hợp lệ.")
+
+        patch_folder = Path(SCANNER_SAVE_PATH) / f"patch_{timestamp}"
+        images_folder = patch_folder / "images"
+        patch_folder.mkdir(parents=True, exist_ok=True)
+        images_folder.mkdir(parents=True, exist_ok=True)
+
+        imported_pdf_path = patch_folder / f"import_{uuid.uuid4().hex}.pdf"
+        imported_pdf_path.write_bytes(pdf_bytes)
+
+        try:
+            with pymupdf.open(str(imported_pdf_path)) as pdf:
+                if pdf.page_count == 0:
+                    raise ValueError("File PDF không có trang.")
+        except ValueError:
+            imported_pdf_path.unlink(missing_ok=True)
+            raise
+        except Exception as exc:
+            imported_pdf_path.unlink(missing_ok=True)
+            raise ValueError("File được chọn không phải PDF hợp lệ.") from exc
+
+        begin_int = await count_images_in_folder(str(images_folder))
+        await splitPDF(str(imported_pdf_path), begin_int, str(images_folder))
+        images_paths = await get_images_from_folder(timestamp, str(images_folder))
+
+        await websocket.send_json({
+            "type": "scan_status",
+            "status": "success",
+            "images": images_paths
+        })
+    except Exception as exc:
+        log_exception(exc, "HUB")
+        log_exception(exc, "HUB")
+        await websocket.send_json({
+            "type": "scan_status",
+            "status": "error",
+            "message": str(exc)
         })
 
 async def processWebSocket(data, service: dict, required_documents: list, timestamp: int, data_ready: dict, websocket: WebSocket) -> bool:
@@ -90,6 +205,14 @@ async def processWebSocket(data, service: dict, required_documents: list, timest
         await websocket.send_json({
             "type": "scan_status",
             "status": "started"
+        })
+        return True
+    elif request.type == "import_file":
+        # Xử lý yêu cầu nhập file
+        asyncio.create_task(processImportFile(timestamp, request.request, websocket))
+        await websocket.send_json({
+            "type": "import_file",
+            "status": "file import started"
         })
         return True
     elif request.type == "start_webview":
@@ -136,7 +259,7 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
         if str(prov_doc.srID).startswith("ADD"):
             documents_data.append({
                 "srID": str(prov_doc.srID),
-                "title": prov_doc.srID[4:],  # lấy tên tài liệu từ srID, ví dụ "ADD:Giấy tờ bổ sung" -> "Giấy tờ bổ sung"
+                "title": parse_add_document_title(str(prov_doc.srID)),
                 "required": False,
                 "files": prov_doc.files,
                 "ocr_enabled": False,
@@ -192,8 +315,10 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
         if doc["srID"].startswith("ADD"):
             files_insert_data.append({
                 "name": doc['title'],
-                "file": doc['pdf_path']
+                "file": doc['pdf_path'],
+                "ref": doc['srID']
             })
+    # xử lý doc SCAN
     for doc in service_docs:
         source_type = doc["sourceType"]
         source_ref = doc["sourceRef"]
@@ -204,7 +329,8 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
             if matching_doc:
                 files_insert_data.append({
                     "name": doc['realTitle'],
-                    "file": matching_doc['pdf_path']
+                    "file": matching_doc['pdf_path'],
+                    "ref": doc['sourceRef']
                 })
                 doc['ready'] = True
             # nếu không match -> tài liệu kiểu đặc biệt, kết hơp từ nhiều tài liệu, ví dụ: "CCCD vợ chồng" -> ghép từ "CCCD chồng" và "CCCD vợ"
@@ -221,10 +347,15 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
                     await merge_images_to_pdf(images_to_merge, output_pdf_path)
                     files_insert_data.append({
                         "name": doc['realTitle'],
-                        "file": output_pdf_path
+                        "file": output_pdf_path,
+                        "ref": doc['sourceRef']
                     })
                     doc['ready'] = True
-        elif source_type == "FORM":
+    # xử lý doc FORM
+    for doc in service_docs:   
+        source_type = doc["sourceType"]
+        source_ref = doc["sourceRef"]          
+        if source_type == "FORM":
             form_key = doc["formKey"]
             source_refs = source_ref.split("|")
             OCRDocsRequested = []
@@ -238,13 +369,9 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
                     if key == ocr_data['type']:
                         OCRDocsRequested.append(ocr_data)
             if len(OCRDocsRequested) == len(source_refs):
+                OCRDocsRequested = await processLogicOCRData(form_key, OCRDocsRequested, files_insert_data)
                 # nếu đủ số lượng tài liệu cần ocr thì ok
-                data_process.append(
-                    DataProcess(
-                        task_name=form_key, 
-                        data=OCRDocsRequested
-                        )
-                    )
+                data_process.append(DataProcess(task_name=form_key, data=OCRDocsRequested))
                 doc['ready'] = True
     # kiểm tra xem tất cả các tài liệu cần upload đã sẵn sàng chưa, nếu chưa thì gửi thông báo lỗi
     for doc in service_docs:
@@ -257,26 +384,31 @@ async def readyDataForWebView(timestamp: int, service: dict, required_documents:
             raise ValueError("Tài liệu cần upload chưa sẵn sàng.")
     # nếu tất cả các tài liệu đã sẵn sàng, gửi dữ liệu về webview
     data_process.append(DataProcess(task_name="insert_file_table", data=files_insert_data))
-    for dp in data_process:
-        dp.print_out()
+    # for dp in data_process:
+    #     dp.print_out()
     return url, data_process
 
 # process webview
 async def processWebView(timestamp: int, service: dict, required_documents: list, webview_request: StartWebViewRequest, data_ready: dict, websocket: WebSocket):
+
+    # Force stdout/stderr to UTF-8
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(
+            encoding="utf-8",
+            errors="replace"
+        )
+
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(
+            encoding="utf-8",
+            errors="replace"
+        )
     try:
         if not data_ready['status']:
             url, data_process = await readyDataForWebView(timestamp, service, required_documents, webview_request, websocket)
             data_ready['status'] = True
             data_ready['url'] = url
             data_ready['data_process'] = data_process
-        await websocket.send_json({
-            "type": "webview",
-            "status": "data_ready"
-        })
-        await websocket.send_json({
-            "type": "webview",
-            "status": "started"
-        })
         # gửi redis để worker webview nhận và xử lý
         await redis_client.rpush(
             "webview",
@@ -296,8 +428,16 @@ async def processWebView(timestamp: int, service: dict, required_documents: list
             "type": "webview",
             "status": "started"
         })
+    except ValueError as ve:
+        print(f"ValueError in processWebView: {ve}")
+        await websocket.send_json({
+            "type": "webview",
+            "status": "error",
+            "message": str(ve)
+        })
     except Exception as e:
         print(f"Error in processWebView: {e}")
+        log_exception(e, "HUB")
         traceback.print_exc()
         try:
             await websocket.send_json({
@@ -305,7 +445,8 @@ async def processWebView(timestamp: int, service: dict, required_documents: list
                 "status": "error",
                 "message": str(e)
             })
-        except Exception:
+        except Exception as send_error:
+            log_exception(send_error, "HUB")
             pass
 
 # nối các file JPG thành một file PDF ứng với mỗi tài liệu
@@ -321,27 +462,41 @@ async def merge_images_to_pdf(images: list[str], output_pdf_path: str):
     pdf.close()
 
 # chia PDF thành các trang riêng lẻ, mỗi trang là một file JPG mới
-async def splitPDF(pdf_path: str, output_folder: str):
+async def splitPDF(pdf_path: str, begin_int: int, output_folder: str):
     output_path = Path(output_folder)
     output_path.mkdir(parents=True, exist_ok=True)
 
     pdf = pymupdf.open(pdf_path)
 
-    images_path = []
-
     try:
         for i, page in enumerate(pdf):
             pix = page.get_pixmap(dpi=300)
 
-            image_path = output_path / f"page_{i + 1}.jpg"
+            image_path = output_path / f"page_{i + begin_int}.jpg"
 
             pix.save(str(image_path))
 
-            images_path.append(str(image_path))
-
     finally:
         pdf.close()
-    return images_path
+
+# đếm số ảnh trong một folder
+async def count_images_in_folder(folder_path: str):
+    count = 0
+    for file_name in os.listdir(folder_path):
+        if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            count += 1
+    return count
+
+# lấy danh sách ảnh từ folder
+async def get_images_from_folder(timestamp: int, folder_path: str):
+    images = []
+    for file_name in os.listdir(folder_path):
+        if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            images.append({
+                "url": os.path.join(folder_path, file_name),
+                "link": f"/scanned-files/patch_{timestamp}/images/{file_name}"
+            })
+    return images
 
 async def OCRDocuments(ocr_data: list[dict]):
     """
@@ -361,8 +516,42 @@ async def OCRDocuments(ocr_data: list[dict]):
         result = await processOCR(code, files)
         if result is not None:
             ocr_final_results.append(result)
-    print(f"OCR final results: {ocr_final_results}")
+        else:
+            raise ValueError(f"Không đọc được thông tin từ QR của: {code}")
+    # print(f"OCR final results: {ocr_final_results}")
     return ocr_final_results
 
+async def processLogicOCRData(form_key, OCRDocsRequested, files_insert_data):
+    """
+    Hàm xử lý logic dữ liệu OCR cho các tài liệu cần điền form.
+    :param form_key: str - khóa của form cần điền
+    :param OCRDocsRequested: list[dict] - danh sách tài liệu cần OCR
+    :param files_insert_data: list[dict] - danh sách các file cần điền vào form
+    :return: list[dict] - danh sách các dict chứa dữ liệu đã xử lý cho form
+    """
+    if form_key == "form_caiChinhHoTich" or form_key == "form_xacNhanTinhTrangHonNhan":
+        cccd_self = next((d for d in OCRDocsRequested if d['type'] == 'cccd_self'), None)
+        cccd_main = next((d for d in OCRDocsRequested if d['type'] == 'cccd_main'), None)
+        if cccd_self and cccd_main and cccd_self['CCCD_id'] == cccd_main['CCCD_id']:
+            # nếu CCCD_id giống nhau thì đánh dấu cccd_self chính là main chủ thể 
+            cccd_self["isSelf"] = True
+        else:
+            cccd_self["isSelf"] = False
+        # thay self mới vào results, giữ nguyên các dữ liệu khác
+        OCRDocsRequested = [d for d in OCRDocsRequested if d['type'] != 'cccd_self']
+        OCRDocsRequested.append(cccd_self)
+    if form_key == "form_xacNhanTinhTrangHonNhan":
+        # nếu có ref d6_3 trong files_insert_data thì 
+        cccd_main = next((d for d in OCRDocsRequested if d['type'] == 'cccd_main'), None)
+        x = any(f.get('ref') == 'd6_3' and f.get('file') != "" for f in files_insert_data)
+        if x:
+            cccd_main["firstTime"] = False
+        else:
+            cccd_main["firstTime"] = True
+        OCRDocsRequested = [d for d in OCRDocsRequested if d['type'] != 'cccd_main']
+        OCRDocsRequested.append(cccd_main)
+        
+        
+    return OCRDocsRequested
 
     

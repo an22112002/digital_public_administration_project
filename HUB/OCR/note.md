@@ -1,0 +1,1 @@
+Chạy worker OCR cần khoản 1.5-3GB RAM

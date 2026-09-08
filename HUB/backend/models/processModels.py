@@ -18,6 +18,10 @@ class DocumentFile(BaseModel):
 class StartWebViewRequest(BaseModel):
     files: list[DocumentFile]
 
+class ImportFileRequest(BaseModel):
+    filename: str
+    file: str
+
 class WebSocketRequest(BaseModel):
-    type: Literal["start_scan", "start_webview", "close"]
-    request: StartScanRequest | StartWebViewRequest | None
+    type: Literal["start_scan", "start_webview", "import_file", "close"]
+    request: StartScanRequest | StartWebViewRequest | ImportFileRequest | None

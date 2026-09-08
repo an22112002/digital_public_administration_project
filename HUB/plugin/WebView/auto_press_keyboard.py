@@ -38,7 +38,7 @@ async def press_key(
     value: str | int,
     passing: bool = False
 ) -> None:
-    print("[PY] Pressing key:", type, value)
+    # print("[PY] Pressing key:", type, value)
     if type == "text":
         keyboard.send_keys("{TAB}")
         time.sleep(0.05)
@@ -82,7 +82,7 @@ async def press_key(
 
 # đưa con trỏ về đầu form
 async def reset():
-    mouse.move(coords=(100, 100))  # Di chuyển chuột ra ngoài form
+    mouse.move(coords=(100, 500))  # Di chuyển chuột ra ngoài form
     time.sleep(0.05)
     mouse.click(button='left', coords=(100, 100))  # Click để đảm bảo form mất focus
     time.sleep(0.05)

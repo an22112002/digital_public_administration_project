@@ -1,6 +1,143 @@
 from pathlib import Path
+import argparse
+import sys
 import pandas as pd 
-from database.index import Database
+from mysql.connector import pooling
+from contextlib import contextmanager
+
+class Database:
+
+    def __init__(self, host, port, user, password, database, pool_size):
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.database = database
+        self.pool_size = pool_size
+
+    def init_pool(self) -> bool:
+
+        try:
+            self.pool = pooling.MySQLConnectionPool(
+                pool_name="mypool",
+                pool_size=self.pool_size,
+
+                host=self.host,
+                port=self.port,
+                user=self.user,
+                password=self.password,
+                database=self.database,
+
+                autocommit=False
+            )
+
+            # ping thử kết nối
+            conn = self.pool.get_connection()
+            conn.ping(reconnect=True)
+            conn.close()
+
+            return True
+        except Exception as e:
+            print(f"Lỗi khởi tạo MySQL Pool: {e}")
+            self.pool = None
+            return False
+
+    def get_connection(self):
+
+        if self.pool is None:
+            raise Exception("Pool not initialized")
+
+        return self.pool.get_connection()
+
+    def get_conn_cursor(self):
+
+        conn = self.get_connection()
+
+        cursor = conn.cursor(dictionary=True)
+
+        return conn, cursor
+
+    @contextmanager
+    def get_cursor(self):
+
+        conn = self.get_connection()
+
+        cursor = conn.cursor(dictionary=True)
+
+        try:
+            yield cursor
+
+            conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
+
+        finally:
+            cursor.close()
+            conn.close()
+
+def get_runtime_base_dir() -> Path:
+    # Khi chạy .exe one-file (PyInstaller), ưu tiên thư mục chứa file .exe.
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+
+    return Path(__file__).resolve().parent
+
+
+def load_config(config_path: str | None = None):
+    if config_path:
+        path = Path(config_path)
+    else:
+        path = get_runtime_base_dir() / "IEconfig.txt"
+
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        config = {}
+        for line in lines:
+            if "=" in line:
+                key, value = line.strip().split("=", 1)
+                config[key] = value
+    return config
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Import/Export database to CSV",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["interactive", "export", "import"],
+        default="interactive",
+        help="Chế độ chạy: interactive/export/import",
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Đường dẫn file IEconfig.txt",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Folder output cho mode export",
+    )
+    parser.add_argument(
+        "--input",
+        default=None,
+        help="Folder input cho mode import",
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Mode import: xóa dữ liệu cũ trước khi import",
+    )
+    parser.add_argument(
+        "--no-replace",
+        action="store_true",
+        help="Mode import: không xóa dữ liệu cũ trước khi import",
+    )
+    return parser.parse_args()
+
 # ============================================================ 
 # Thứ tự này dùng khi INSERT: # bảng cha -> bảng con 
 # ============================================================ 
@@ -201,20 +338,51 @@ def import_database_from_csv(
         conn.close()
 
 if __name__ == "__main__":
+    args = parse_args()
+
+    try:
+        config = load_config(args.config)
+        db = Database(
+            host=config.get("DB_HOST"),
+            port=int(config.get("DB_PORT")),
+            user=config.get("DB_USER"),
+            password=config.get("DB_PASSWORD"),
+            database=config.get("DB_NAME"),
+            pool_size=int(config.get("DB_POOL_SIZE"))
+        )
+        if not db.init_pool():
+            print("Không thể kết nối database.")
+            exit(1)
+
+    except Exception as e:
+        print(f"Lỗi: {e}")
+        exit(1)
+
+    if args.mode == "export":
+        if not args.output:
+            raise ValueError("Thiếu --output cho mode export")
+        export_database_to_csv(args.output, db)
+        sys.exit(0)
+
+    if args.mode == "import":
+        if not args.input:
+            raise ValueError("Thiếu --input cho mode import")
+
+        replace = True
+        if args.no_replace:
+            replace = False
+        elif args.replace:
+            replace = True
+
+        import_database_from_csv(args.input, db, replace=replace)
+        sys.exit(0)
+
     order = input("Chức năng: \n(0) Close program\n(1) Export database ra CSV\n(2) Import database từ CSV\n: ")
     if order == "0":
         print("Đóng chương trình.")
     elif order == "1":
         output_folder = input("Nhập folder output: ")
-        db = Database()
-        if not db.init_pool():
-            print("Không thể kết nối database.")
-            exit(1)
         export_database_to_csv(output_folder, db)
     elif order == "2":
         input_path = input("Nhập folder input: ")
-        db = Database()
-        if not db.init_pool():
-            print("Không thể kết nối database.")
-            exit(1)
         import_database_from_csv(input_path, db)

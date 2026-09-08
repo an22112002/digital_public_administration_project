@@ -9,6 +9,7 @@ from backend.services.scannerServices import (
     checkNAPS2installed,
     getScannerDevices,
 )
+from backend.log.main import log_exception
 
 from backend.config import (
     REDIS_HOST,
@@ -35,9 +36,6 @@ async def lifespan(router: APIRouter):
         asyncio.create_task(
             update_scanner_list_devices("twain", 10)
         ),
-        asyncio.create_task(
-            update_scanner_list_devices("escl", 10)
-        ),
     ]
 
     try:
@@ -52,7 +50,7 @@ async def lifespan(router: APIRouter):
             return_exceptions=True,
         )
 
-        for driver in ("wia", "twain", "escl"):
+        for driver in ("wia", "twain"):
             await r.delete(
                 f"scanner_devices:{driver}"
             )
@@ -75,6 +73,45 @@ async def check_naps2_installed():
 @scanner_router.get("/naps2/devices")
 async def get_scanner_devices():
     return await get_scanner_devices_from_redis()
+
+
+@scanner_router.get("/naps2/options")
+async def get_scanner_options():
+    devices_by_driver = await get_scanner_devices_from_redis()
+
+    options = []
+
+    for driver in ("wia", "twain"):
+        devices = devices_by_driver.get(driver, [])
+
+        for device in devices:
+            name = device.get("name", "")
+            status = device.get("status", "disconnected")
+
+            if not name:
+                continue
+
+            options.append({
+                "id": f"{driver}:{name}",
+                "label": f"{name} ({driver.upper()})",
+                "scanner": name,
+                "driver": driver,
+                "status": status,
+            })
+
+    selected = next(
+        (
+            option
+            for option in options
+            if option["status"] == "connected"
+        ),
+        None,
+    )
+
+    return {
+        "options": options,
+        "default": selected,
+    }
 
 
 async def update_scanner_list_devices(
@@ -126,6 +163,7 @@ async def update_scanner_list_devices(
             raise
 
         except Exception as e:
+            log_exception(e, "HUB")
             print(
                 f"Update scanner devices "
                 f"{type_driver} error: {e}"
@@ -137,7 +175,7 @@ async def update_scanner_list_devices(
 async def get_scanner_devices_from_redis():
     result = {}
 
-    for driver in ("wia", "twain", "escl"):
+    for driver in ("wia", "twain"):
         value = await r.get(
             f"scanner_devices:{driver}"
         )

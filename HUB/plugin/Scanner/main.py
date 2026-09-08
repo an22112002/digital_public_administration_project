@@ -20,7 +20,7 @@ class ScanStatus(Enum):
 
 def check_naps2_installed(path_to_naps2: str) -> tuple[bool, str]:
     try:
-        result = subprocess.run([path_to_naps2, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run([path_to_naps2, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW)
         if result.returncode == 0:
             message = result.stderr.decode().strip().split('+')[0]  # Lấy version từ stderr, bỏ phần sau dấu +
             return True, message
@@ -32,7 +32,7 @@ def check_naps2_installed(path_to_naps2: str) -> tuple[bool, str]:
 # Lấy danh sách các thiết bị scanner được cài đặt trên hệ thống
 async def get_list_scanner_devices(path_to_naps2: str, type_driver: Literal["wia", "twain", "escl"]) -> list:
     try:
-        result = result = subprocess.run(
+        result = subprocess.run(
             [
                 path_to_naps2,
                 "--listdevices",
@@ -40,6 +40,7 @@ async def get_list_scanner_devices(path_to_naps2: str, type_driver: Literal["wia
             ],
             capture_output=True,
             text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
             encoding="utf-8",
             errors="replace"
         )
@@ -60,6 +61,7 @@ async def scan_documents_to_folder(
     timestamp: int,
     path_to_naps2: str,
     output_folder: str,
+    filename: str,
     device_name: str,
     driver: Literal["wia", "twain", "escl"],
     color_mode: Literal["color", "grayscale", "blackwhite"] = "color",
@@ -68,7 +70,7 @@ async def scan_documents_to_folder(
     output_folder_path = Path(output_folder) / f"patch_{timestamp}"
     output_folder_path.mkdir(parents=True, exist_ok=True)
 
-    output_file = output_folder_path / "scan.pdf"  # Tên tệp PDF đầu ra
+    output_file = output_folder_path / f"{filename}.pdf"  # Tên tệp PDF đầu ra
 
     try:
         result = subprocess.run(
@@ -84,6 +86,7 @@ async def scan_documents_to_folder(
             ],
             capture_output=True,
             text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
             encoding="utf-8",
             errors="replace",
             timeout=120,

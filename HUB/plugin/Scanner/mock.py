@@ -43,12 +43,12 @@ async def get_list_scanner_devices(path_to_naps2: str, type_driver: Literal["wia
     else:
         return ["Mock Scanner 1", "Mock Scanner 2"]
 
-async def scan_documents_to_folder(timestamp: int, path_to_naps2: str, output_folder: str, device_name: str, driver: Literal["wia", "twain", "escl"], color_mode: Literal["color", "grayscale", "blackwhite"] = "color") -> tuple[ScanStatus, str | None]:
+async def scan_documents_to_folder(timestamp: int, path_to_naps2: str, output_folder: str, filename: str, device_name: str, driver: Literal["wia", "twain", "escl"], color_mode: Literal["color", "grayscale", "blackwhite"] = "color") -> tuple[ScanStatus, str | None]:
     output_folder_path = Path(output_folder+f"/patch_{timestamp}")
     output_folder_path.mkdir(parents=True, exist_ok=True)
     # Giả lập việc scan thành công, lấy file PDF từ store và lưu vào output_folder
     store = r"C:\Users\ADMIN\Pictures\store"
-    output_pdf_path = output_folder_path / f"scan.pdf"
+    output_pdf_path = output_folder_path / f"{filename}.pdf"
     # tìm file PDF trong store
     pdf_files = list(Path(store).glob("*.pdf"))
     if not pdf_files:

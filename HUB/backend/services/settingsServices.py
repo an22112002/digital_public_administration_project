@@ -1,5 +1,6 @@
 from backend.config import open_settings, save_settings
 from backend.crud.settingsCrud import get_province_list, get_commune_list, get_position
+from backend.log.main import log_exception
 
 async def getNAPS2Path() -> str:
     settings_data = await open_settings()
@@ -13,6 +14,7 @@ async def setNAPS2Path(new_path: str) -> bool:
         await save_settings(settings_data)
         return True
     except Exception as e:
+        log_exception(e, "HUB")
         print(f"[Error] Failed to set NAPS2 path: {e}")
         return False
 
@@ -28,6 +30,7 @@ async def setTitle(new_title: str) -> bool:
         await save_settings(settings_data)
         return True
     except Exception as e:
+        log_exception(e, "HUB")
         print(f"[Error] Failed to set title: {e}")
         return False
 
@@ -65,5 +68,6 @@ async def savePosition(province_id: str, commune_id: str):
         else:
             return {"success": False, "message": "Lỗi không tìm thấy tỉnh/thành phố hoặc xã/phường."}
     except Exception as e:
+        log_exception(e, "HUB")
         print(f"[Error] Failed to save position: {e}")
         return {"success": False, "message": "Lỗi khi lưu vị trí.", "error": str(e)}

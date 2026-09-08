@@ -14,7 +14,7 @@ export interface ScannerDevice {
 export interface DevicesListResponse {
     wia: ScannerDevice[];
     twain: ScannerDevice[];
-    escl: ScannerDevice[];
+    escl?: ScannerDevice[];
 }
 
 export async function getNaps2Installed() {

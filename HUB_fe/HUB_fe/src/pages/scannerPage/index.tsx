@@ -41,9 +41,9 @@ export default function ScannerPage() {
     const fetchDevices = async () => {
         const devicesData = await getDevicesList();
         const combinedDevices: DeviceDetail[] = [
-            ...devicesData.wia.map(device => ({ ...device, driver: ["WIA"] })),
-            ...devicesData.twain.map(device => ({ ...device, driver: ["TWAIN"] })),
-            ...devicesData.escl.map(device => ({ ...device, driver: ["ESCL"] })),
+            ...(devicesData.wia ?? []).map(device => ({ ...device, driver: ["WIA"] })),
+            ...(devicesData.twain ?? []).map(device => ({ ...device, driver: ["TWAIN"] })),
+            ...(devicesData.escl ?? []).map(device => ({ ...device, driver: ["ESCL"] })),
         ];
         setDevices(combinedDevices);
     }
@@ -121,7 +121,7 @@ export default function ScannerPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {devices ? (
+                        {devices && devices.length > 0 ? (
                             <>
                                 {devices.map((device, index) => (
                                     <tr key={index} className="border-gray-900 border-[2px]">
