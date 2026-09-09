@@ -170,10 +170,9 @@ class Backend:
                     "is already running"
                 )
 
-                app.state.should_exit = True
-
-                # Không start bất kỳ thứ gì
-                return
+                raise RuntimeError(
+                    "Another HUB instance is already running"
+                )
 
             windows_mutex_acquired = True
 
@@ -204,9 +203,9 @@ class Backend:
                     "already owns the Redis lock"
                 )
 
-                app.state.should_exit = True
-
-                return
+                raise RuntimeError(
+                    "Another HUB instance already owns the Redis lock"
+                )
 
             redis_lock_acquired = True
 

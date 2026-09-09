@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings>
+	<title>Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công</title>
+	<naps2_path>C:\Program Files (x86)\NAPS2\NAPS2.Console.exe</naps2_path>
+	<province>Thành phố Hà Nội</province>
+	<commune>Phường Ba Đình</commune>
+	<scanner_save_path>D:\scanned_files</scanner_save_path>
+</settings>
