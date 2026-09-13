@@ -22,32 +22,29 @@ export default function Header({
   }, []);
 
   return (
-    <header className="mb-8 flex items-center justify-between border-b border-slate-200 pb-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#32b5b8] to-[#1e7bd8] shadow-md shadow-cyan-200">
+    <header className="mb-8 flex items-center justify-between rounded-[24px] border border-[#f7c7b5] bg-gradient-to-r from-[#e63a12] via-[#bd2517] to-[#921507] px-6 py-5 shadow-[0_12px_30px_rgba(170,30,10,0.2)]">
+      <div className="flex items-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white bg-white shadow-sm">
           <img
             src={dv_cong}
             alt="DV Cong So Logo"
             className="h-full w-full object-cover"
           />
         </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">HỖ TRỢ THỰC HIỆN DỊCH VỤ CÔNG</p>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800">{pageTitle}</h1>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#fff6e8]">HỖ TRỢ THỰC HIỆN DỊCH VỤ CÔNG</p>
+          <h1 className="mt-1 text-xl font-black tracking-tight text-white">{pageTitle}</h1>
         </div>
         {showBackButtonClick() && (
-          <button className="inline-flex items-center gap-2 rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600"
-            onClick={
-              () => {
-                window.history.back();
-              }
-            }
+          <button className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#a21608] shadow-sm transition hover:bg-[#ffe6dc]"
+            onClick={() => {
+              window.history.back();
+            }}
           >
             Trở lại
-          </button>)}
+          </button>
+        )}
       </div>
-
-      
 
       {action ?? (
         <>
@@ -55,7 +52,6 @@ export default function Header({
             Hướng dẫn
           </button> */}
         </>
-        
       )}
     </header>
   )
