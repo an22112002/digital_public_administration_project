@@ -1,3 +1,4 @@
+import os
 import threading
 
 import uvicorn
@@ -9,57 +10,65 @@ from launcher.tray import TrayApp
 def run_backend(backend: Backend, server: uvicorn.Server):
 
     print("[BACKEND] Starting Uvicorn...")
+    try:
 
-    server.run()
+        server.run()
+    except SystemExit:
+        print("[MAIN] Exiting all")
+        os._exit(0)        
 
     print("[BACKEND] Uvicorn stopped")
 
 
 def main():
+    try:
 
-    # ==============================
-    # Backend
-    # ==============================
+        # ==============================
+        # Backend
+        # ==============================
 
-    backend = Backend(
-        host="0.0.0.0",
-        port=8000,
-    )
+        backend = Backend(
+            host="0.0.0.0",
+            port=8000,
+        )
 
-    config = uvicorn.Config(
-        backend.app,
-        host=backend.host,
-        port=backend.port,
-        log_level="info",
-    )
+        config = uvicorn.Config(
+            backend.app,
+            host=backend.host,
+            port=backend.port,
+            log_level="info",
+        )
 
-    server = uvicorn.Server(config)
+        server = uvicorn.Server(config)
 
-    # ==============================
-    # Backend thread
-    # ==============================
+        # ==============================
+        # Backend thread
+        # ==============================
 
-    backend_thread = threading.Thread(
-        target=run_backend,
-        args=(backend, server),
-        daemon=True,
-    )
+        backend_thread = threading.Thread(
+            target=run_backend,
+            args=(backend, server),
+            daemon=True,
+        )
 
-    backend_thread.start()
+        backend_thread.start()
 
-    # ==============================
-    # Tray
-    # ==============================
+        # ==============================
+        # Tray
+        # ==============================
 
-    tray = TrayApp(server)
+        tray = TrayApp(server)
 
-    tray.run()
+        tray.run()
 
-    # ==============================
-    # Wait backend
-    # ==============================
+        # ==============================
+        # Wait backend
+        # ==============================
 
-    backend_thread.join()
+        backend_thread.join()
+    except SystemExit:
+        print("[MAIN] Exiting...")
+        exit(0)
 
 if __name__ == "__main__":
     import multiprocessing

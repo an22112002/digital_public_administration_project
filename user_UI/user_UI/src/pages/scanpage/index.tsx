@@ -4,28 +4,18 @@ import { useParams } from 'react-router-dom';
 import { getScannerOptions } from '../../api/scannerAPI';
 import type { ScannerOption } from '../../api/scannerAPI';
 import { Modal } from 'antd';
-
-interface DocumentItem {
-  srID: string;
-  serviceID: number;
-  code: string;
-  title: string;
-  description: string;
-  required: boolean;
-  ocr_enabled: boolean;
-  color: string | null;
-  files: string[] | null;
-}
-
-interface ScanFile {
-  url: string;
-  link: string;
-}
-
-interface SendFile {
-  srID: string;
-  files: string[];
-}
+import {
+  ArrowDownOutlined,
+  FilePdfOutlined,
+  ScanOutlined,
+  ArrowRightOutlined,
+} from "@ant-design/icons";
+import { websocketUrl } from '../../api/base';
+import AddDocumentModal from '../../components/scanpage/AddDocumentModal';
+import DocumentList from '../../components/scanpage/DocumentList';
+import PreviewModal from '../../components/scanpage/PreviewModal';
+import ScannedFiles from '../../components/scanpage/ScannedFiles';
+import type { DocumentItem, ScanFile, SendFile } from '../../components/scanpage/types';
 
 export default function ScanPage() {
   const websocket = useRef<WebSocket | null>(null);
@@ -39,8 +29,10 @@ export default function ScanPage() {
   // STATE
   // =========================================================
 
+  const [serviceName, setServiceName] = useState<string | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [scannedFiles, setScannedFiles] = useState<ScanFile[]>([]);
+  const [deletedFileUrls, setDeletedFileUrls] = useState<string[]>([]);
 
   // Chỉ lưu ID của document đang focus
   const [focusDocumentId, setFocusDocumentId] = useState<string | null>(
@@ -53,11 +45,18 @@ export default function ScanPage() {
   const [selectedScannerId, setSelectedScannerId] =
     useState('');
 
+  const [actionHint, setActionHint] = useState<'scan' | 'import' | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [isInProcess, setIsInProcess] = useState(false);
 
-  const [hiddenDescriptions, setHiddenDescriptions] = useState<Record<string, boolean>>({});
+  const [previewFile, setPreviewFile] = useState<ScanFile | null>(null);
+
+  const [previewZoom, setPreviewZoom] = useState(1);
+
+  const [selectedSupplementalDocumentIds, setSelectedSupplementalDocumentIds] =
+    useState<string[]>([]);
 
   const [scanError, setScanError] = useState<string | null>(null);
 
@@ -71,6 +70,19 @@ export default function ScanPage() {
 
   const [newExtensionDocumentTypes, setNewExtensionDocumentTypes] = useState<string>();
 
+  const supplementalDocuments = documents.filter(
+    doc =>
+      !doc.required &&
+      !doc.srID.startsWith('ADD:') &&
+      !selectedSupplementalDocumentIds.includes(doc.srID)
+  );
+
+  const visibleDocuments = documents.filter(
+    doc =>
+      doc.required ||
+      selectedSupplementalDocumentIds.includes(doc.srID)
+  );
+
   useEffect(() => {
     if (processError) {
       setIsInProcess(false);
@@ -81,6 +93,10 @@ export default function ScanPage() {
   const focusDocument =
     documents.find(doc => doc.srID === focusDocumentId) ?? null;
 
+  const visibleScannedFiles = scannedFiles.filter(
+    file => !deletedFileUrls.includes(file.url)
+  );
+
   // =========================================================
   // WEBSOCKET RECEIVE
   // =========================================================
@@ -88,6 +104,7 @@ export default function ScanPage() {
   const handleWebSocketReceive = (data: any) => {
     if (data['code'] === '0') {
       // Load danh sách document lần đầu
+      setServiceName(data["service"]["title"] ?? null);
       const receivedDocuments: DocumentItem[] = data['documents'] ?? [];
 
       const newDocuments = receivedDocuments.map(
@@ -103,7 +120,11 @@ export default function ScanPage() {
       // Nếu chưa có document nào được chọn
       // thì chọn document đầu tiên
       if (newDocuments.length > 0 && !focusDocumentId) {
-        setFocusDocumentId(newDocuments[0].srID);
+        const firstVisibleDocument =
+          newDocuments.find(doc => doc.required) ??
+          newDocuments[0];
+
+        setFocusDocumentId(firstVisibleDocument.srID);
       }
 
       return;
@@ -118,6 +139,29 @@ export default function ScanPage() {
         'Error from WebSocket:',
         data['error']
       );
+    }
+
+    const isCropMessage = data['type'] === 'crop_status';
+
+    if (isCropMessage) {
+      if (data['status'] === 'error' || data['error']) {
+        setProcessError(String(data['message'] ?? data['error'] ?? 'Không thể crop ảnh'));
+        return;
+      }
+
+      const croppedImages: ScanFile[] = (data['cropped_images'] ?? [])
+        .map((imagePath: string) => createScanFileFromPath(imagePath))
+        .filter((file: ScanFile | null): file is ScanFile => file !== null);
+      if (croppedImages.length > 0) {
+        setScannedFiles(previousFiles => {
+          const existingUrls = new Set(previousFiles.map(file => file.url));
+          return [
+            ...previousFiles,
+            ...croppedImages.filter(file => !existingUrls.has(file.url)),
+          ];
+        });
+      }
+      return;
     }
 
     // =======================================================
@@ -227,10 +271,10 @@ export default function ScanPage() {
       newDocumentItem,
     ]);
 
-    setHiddenDescriptions(prev => ({
+    setSelectedSupplementalDocumentIds(prev => [
       ...prev,
-      [newDocumentItem.srID]: false,
-    }));
+      newDocumentItem.srID,
+    ]);
 
     // Focus document mới
     setFocusDocumentId(newDocumentItem.srID);
@@ -240,25 +284,38 @@ export default function ScanPage() {
     setNewExtensionDocumentTypes("");
   };
 
-  const updateDocumentDescription = (
-    srID: string,
-    description: string
-  ) => {
-    setDocuments(prevDocuments =>
-      prevDocuments.map(doc =>
-        doc.srID === srID
-          ? { ...doc, description }
-          : doc
-      )
+  const handleSelectSupplementalDocument = (srID: string) => {
+    setSelectedSupplementalDocumentIds(prev =>
+      prev.includes(srID) ? prev : [...prev, srID]
     );
+    setFocusDocumentId(srID);
+    setIsModalOpen(false);
   };
 
-  const toggleDescriptionVisibility = (
-    srID: string
-  ) => {
-    setHiddenDescriptions(prev => ({
-      ...prev,
-      [srID]: !(prev[srID] ?? false),
+  const openFilePreview = (file: ScanFile) => {
+    setPreviewFile(file);
+    setPreviewZoom(1);
+  };
+
+  const closeFilePreview = () => {
+    setPreviewFile(null);
+    setPreviewZoom(1);
+  };
+
+  const handleCropFile = (file: ScanFile) => {
+    const ws = websocket.current;
+
+    if (ws?.readyState !== WebSocket.OPEN) {
+      setProcessError('WebSocket chưa kết nối');
+      return;
+    }
+
+    setProcessError(null);
+    ws.send(JSON.stringify({
+      type: 'crop_image',
+      request: {
+        image: file.url,
+      },
     }));
   };
 
@@ -267,6 +324,8 @@ export default function ScanPage() {
   // =========================================================
 
   const startScan = () => {
+    setActionHint(null);
+
     const selectedOption =
       scannerOptions.find(
         option => option.id === selectedScannerId
@@ -321,6 +380,7 @@ export default function ScanPage() {
         'Có tài liệu bắt buộc chưa có file:',
         missingRequiredDocs
       );
+      alert('Có tài liệu bắt buộc chưa có file');
 
       return;
     }
@@ -356,6 +416,8 @@ export default function ScanPage() {
   };
 
   const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setActionHint(null);
+
     const file = event.target.files?.[0];
 
     event.target.value = '';
@@ -460,42 +522,23 @@ export default function ScanPage() {
     );
   };
 
-  // =========================================================
-  // GET COLORS OF FILE
-  // =========================================================
-
-  const getFileColors = (
-    fileUrl: string
-  ): string[] => {
-    const colors: string[] = [];
-
-    for (const doc of documents) {
-      if (
-        doc.files?.includes(fileUrl) &&
-        doc.color
-      ) {
-        colors.push(doc.color);
-      }
-    }
-
-    return colors;
-  };
-
-  // =========================================================
-  // CHECK FILE BELONGS TO CURRENT DOCUMENT
-  // =========================================================
-
-  const isFileSelectedForFocusDocument = (
-    fileUrl: string
-  ): boolean => {
-    if (!focusDocument) {
-      return false;
-    }
-
-    return (
-      focusDocument.files?.includes(fileUrl) ??
-      false
+  const handleDeleteFile = (file: ScanFile) => {
+    setDeletedFileUrls(previousUrls =>
+      previousUrls.includes(file.url)
+        ? previousUrls
+        : [...previousUrls, file.url]
     );
+
+    setDocuments(previousDocuments =>
+      previousDocuments.map(document => ({
+        ...document,
+        files: (document.files ?? []).filter(fileUrl => fileUrl !== file.url),
+      }))
+    );
+
+    if (previewFile?.url === file.url) {
+      closeFilePreview();
+    }
   };
 
   // =========================================================
@@ -509,6 +552,7 @@ export default function ScanPage() {
         const options = data.options ?? [];
 
         setScannerOptions(options);
+        setActionHint(options.length > 0 ? 'scan' : 'import');
 
         if (data.default?.id) {
           setSelectedScannerId(data.default.id);
@@ -519,6 +563,7 @@ export default function ScanPage() {
           setSelectedScannerId(options[0].id);
         }
       } catch (error) {
+        setActionHint('import');
         console.error(
           'Không tải được danh sách máy quét:',
           error
@@ -535,7 +580,7 @@ export default function ScanPage() {
     }
 
     const ws = new WebSocket(
-      `ws://localhost:8000/process/service/${serviceID}`
+      `${websocketUrl}/process/service/${serviceID}`
     );
 
     websocket.current = ws;
@@ -641,6 +686,12 @@ export default function ScanPage() {
 
         <Header />
 
+        {serviceName && (
+          <div className="px-6">
+            Dịch vụ: <span className="font-semibold">{serviceName}</span>
+          </div>
+        )}
+
         {scanError && (
           <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
             <svg
@@ -685,356 +736,17 @@ export default function ScanPage() {
 
         <main className="rounded-[30px] bg-white p-5 shadow-[0_30px_70px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 md:p-8">
 
-          {/* ================================================= */}
-          {/* FILE + DOCUMENT */}
-          {/* ================================================= */}
-
-          <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-
-            {/* ================================================= */}
-            {/* SCANNED FILES */}
-            {/* ================================================= */}
-
-            <section className="rounded-[24px] bg-[#f4fbfb] p-5 ring-1 ring-[#dfeff1]">
-
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">
-                  File quét
-                </h2>
-
-                {focusDocument && (
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <div
-                      className={`h-3 w-3 rounded-full ${
-                        focusDocument.color ??
-                        'bg-slate-400'
-                      }`}
-                    />
-
-                    <span>
-                      Đang chọn: {focusDocument.title}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {scannedFiles.length === 0 ? (
-                <div className="flex min-h-[250px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 text-sm text-slate-400">
-                  Chưa có file quét
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-
-                  {scannedFiles.map((file, index) => {
-
-                    const colors =
-                      getFileColors(file.url);
-
-                    const isSelected =
-                      isFileSelectedForFocusDocument(
-                        file.url
-                      );
-
-                    return (
-                      <div
-                        key={file.url}
-                        onClick={() =>
-                          handleSetFileSelectForDocument(
-                            file
-                          )
-                        }
-                        className={`
-                          cursor-pointer
-                          rounded-[18px]
-                          border
-                          bg-white/80
-                          p-4
-                          shadow-[0_12px_28px_rgba(15,23,42,0.04)]
-                          transition-all
-                          duration-200
-                          hover:-translate-y-0.5
-                          hover:shadow-[0_15px_35px_rgba(15,23,42,0.08)]
-
-                          ${
-                            isSelected
-                              ? 'border-[#32b5b8] ring-2 ring-[#32b5b8]/30'
-                              : 'border-[#dfecef]'
-                          }
-                        `}
-                      >
-
-                        {/* FILE HEADER */}
-
-                        <div className="mb-3 flex items-center justify-between gap-3">
-
-                          <span className="min-w-0 truncate text-sm font-medium text-slate-600">
-                            page {index + 1}
-                          </span>
-
-                          {/* COLORS */}
-
-                          <div className="flex shrink-0 items-center gap-1.5">
-
-                            {colors.map(
-                              (
-                                color,
-                                colorIndex
-                              ) => (
-                                <div
-                                  key={`${file.url}-${colorIndex}`}
-                                  className={`
-                                    h-3.5
-                                    w-3.5
-                                    rounded-full
-                                    ring-1
-                                    ring-white
-                                    shadow-sm
-                                    ${color}
-                                  `}
-                                />
-                              )
-                            )}
-
-                          </div>
-
-                        </div>
-
-                        {/* IMAGE */}
-
-                        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#effaf7] via-[#f4fbfb] to-[#edf5ff]">
-
-                          <img
-                            className="h-auto w-full object-contain"
-                            src={`http://localhost:8000${file.link}`}
-                            alt="Scanned File"
-                          />
-
-                        </div>
-
-                      </div>
-                    );
-                  })}
-
-                </div>
-              )}
-
-            </section>
-
-            {/* ================================================= */}
-            {/* DOCUMENTS */}
-            {/* ================================================= */}
-
-            <aside className="rounded-[24px] bg-[#f4fbfb] p-5 ring-1 ring-[#dfeff1]">
-
-              <div className="mb-5 flex items-center justify-between gap-3">
-
-                <h2 className="text-2xl font-bold text-slate-800">
-                  Tài liệu
-                </h2>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setIsModalOpen(true)
-                  }
-                  className="rounded-full bg-[#eafaf6] px-3 py-2 text-sm font-semibold text-[#118a67] transition hover:bg-[#dff7f0]"
-                >
-                  Thêm tài liệu
-                </button>
-
-              </div>
-
-              <div className="space-y-3">
-
-                {documents.map(doc => {
-
-                  const isFocus =
-                    focusDocumentId ===
-                    doc.srID;
-
-                  const fileCount =
-                    doc.files?.length ?? 0;
-
-                  const isDescriptionVisible =
-                    !(hiddenDescriptions[doc.srID] ?? true);
-
-                  const descriptionPreview =
-                    doc.description?.trim()
-                      ? doc.description.trim().length > 48
-                        ? `${doc.description.trim().slice(0, 48)}...`
-                        : doc.description.trim()
-                      : 'Chưa có mô tả';
-
-                  return (
-                    <div
-                      key={doc.srID}
-                      onClick={() =>
-                        setFocusDocumentId(
-                          doc.srID
-                        )
-                      }
-                      className={`
-                        cursor-pointer
-                        rounded-2xl
-                        border
-                        bg-white/90
-                        px-4
-                        py-3
-                        text-sm
-                        font-medium
-                        text-slate-700
-                        shadow-sm
-                        transition-all
-
-                        ${
-                          isFocus
-                            ? 'border-[#32b5b8] ring-2 ring-[#32b5b8]/30'
-                            : 'border-[#dfecef] hover:border-[#32b5b8]/50'
-                        }
-                      `}
-                    >
-
-                      <div className="flex flex-wrap items-center gap-2">
-
-                        {/* COLOR */}
-
-                        <div
-                          className={`
-                            h-3.5
-                            w-3.5
-                            shrink-0
-                            rounded-full
-                            ${
-                              doc.color ??
-                              'bg-slate-400'
-                            }
-                          `}
-                        />
-
-                        {/* TITLE */}
-
-                        <span className="flex-1">
-                          {doc.title}
-                        </span>
-
-                        {/* FILE COUNT */}
-
-                        {fileCount > 0 && (
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
-                            {fileCount} file
-                            {fileCount > 1
-                              ? 's'
-                              : ''}
-                          </span>
-                        )}
-
-                        {/* REQUIRED */}
-
-                        {doc.required && (
-                          <span className="rounded-full bg-[#ffebee] px-2 py-1 text-xs text-[#c62828]">
-                            Bắt buộc
-                          </span>
-                        )}
-
-                      </div>
-
-                      {isFocus && (
-                        <div className="mt-3 border-t border-slate-200 pt-3">
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-                              Mô tả
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={event => {
-                                event.stopPropagation();
-                                toggleDescriptionVisibility(doc.srID);
-                              }}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-200"
-                            >
-                              {isDescriptionVisible ? (
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  className="h-3.5 w-3.5"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
-                                  <circle cx="12" cy="12" r="3"/>
-                                </svg>
-                              ) : (
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  className="h-3.5 w-3.5"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M3 3l18 18"/>
-                                  <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4"/>
-                                  <path d="M9.1 5.5A11.3 11.3 0 0 1 12 5c6.5 0 10 7 10 7a16.8 16.8 0 0 1-4.5 5.5"/>
-                                  <path d="M6.2 6.2A16.8 16.8 0 0 0 2 12s3.5 7 10 7a10.8 10.8 0 0 0 4.4-1"/>
-                                </svg>
-                              )}
-                              {isDescriptionVisible ? 'Ẩn' : 'Hiện'}
-                            </button>
-                          </div>
-
-                          {isDescriptionVisible ? (
-                            <textarea
-                              value={doc.description ?? ''}
-                              onClick={event =>
-                                event.stopPropagation()
-                              }
-                              onChange={event =>
-                                updateDocumentDescription(
-                                  doc.srID,
-                                  event.target.value
-                                )
-                              }
-                              rows={4}
-                              placeholder="Nhập mô tả cho tài liệu..."
-                              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#32b5b8] focus:bg-white focus:ring-2 focus:ring-[#32b5b8]/15"
-                            />
-                          ) : (
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-500">
-                              <div className="truncate">
-                                {descriptionPreview}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                    </div>
-                  );
-                })}
-
-              </div>
-
-            </aside>
-
-          </div>
-
-          {/* ================================================= */}
-          {/* FOOTER */}
-          {/* ================================================= */}
-
-          <div className="mt-8 flex flex-col gap-4 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 border-t border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
 
             {/* SCANNER */}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 justify-center rounded-[16px] bg-[#28a9a9] px-6 py-4 text-sm font-medium text-white shadow-[0_12px_30px_rgba(40,169,169,0.35)] transition hover:bg-[#219a9a] sm:justify-start">
 
               <label
-                className="text-sm font-medium text-slate-600"
+                className="text-sm font-lg text-white"
                 htmlFor="scanner-select"
               >
-                Máy quét
+                CHỌN MÁY QUÉT
               </label>
 
               <select
@@ -1077,21 +789,42 @@ export default function ScanPage() {
                 onChange={handleImportFile}
               />
 
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-[16px] bg-[#3978c7] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(57,120,199,0.28)] transition hover:bg-[#2f68b1]"
-                onClick={() => fileInput.current?.click()}
-              >
-                Nộp file
-              </button>
+              <div className="relative">
+                {actionHint === 'import' && (
+                  <ArrowDownOutlined
+                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#3978c7]"
+                    aria-label="Mũi tên hướng dẫn nộp file"
+                  />
+                )}
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-[16px] bg-[#3978c7] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(57,120,199,0.28)] transition hover:bg-[#2f68b1]"
+                  onClick={() => {
+                    setActionHint(null);
+                    fileInput.current?.click();
+                  }}
+                >
+                  <FilePdfOutlined />&nbsp;
+                  Nộp file
+                </button>
+              </div>
 
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-[16px] bg-[#28a9a9] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(40,169,169,0.35)] transition hover:bg-[#219a9a]"
-                onClick={startScan}
-              >
-                Quét
-              </button>
+              <div className="relative">
+                {actionHint === 'scan' && (
+                  <ArrowDownOutlined
+                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#28a9a9]"
+                    aria-label="Mũi tên hướng dẫn quét"
+                  />
+                )}
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-[16px] bg-[#28a9a9] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(40,169,169,0.35)] transition hover:bg-[#219a9a]"
+                  onClick={startScan}
+                >
+                  <ScanOutlined />&nbsp;
+                  Quét
+                </button>
+              </div>
 
               <button
                 type="button"
@@ -1100,10 +833,42 @@ export default function ScanPage() {
                   handleSubmitDocuments
                 }
               >
+                <ArrowRightOutlined />&nbsp;
                 Nộp hồ sơ
               </button>
 
             </div>
+
+          </div>
+          {/* ================================================= */}
+          {/* FILE + DOCUMENT */}
+          {/* ================================================= */}
+          <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+
+            {/* ================================================= */}
+            {/* SCANNED FILES */}
+            {/* ================================================= */}
+
+            <ScannedFiles
+              files={visibleScannedFiles}
+              selectedFileUrls={focusDocument?.files ?? []}
+              selectedFileColor={focusDocument?.color ?? null}
+              onSelectFile={handleSetFileSelectForDocument}
+              onDeleteFile={handleDeleteFile}
+              onPreviewFile={openFilePreview}
+            />
+
+            {/* ================================================= */}
+            {/* DOCUMENTS */}
+            {/* ================================================= */}
+
+            <DocumentList
+              documents={visibleDocuments}
+              scannedFiles={visibleScannedFiles}
+              focusDocumentId={focusDocumentId}
+              onSelectDocument={setFocusDocumentId}
+              onOpenAddDocument={() => setIsModalOpen(true)}
+            />
 
           </div>
 
@@ -1111,95 +876,24 @@ export default function ScanPage() {
 
       </div>
 
-      {/* ===================================================== */}
-      {/* ADD DOCUMENT MODAL */}
-      {/* ===================================================== */}
+      <PreviewModal
+        file={previewFile}
+        zoom={previewZoom}
+        onZoomChange={setPreviewZoom}
+        onCrop={handleCropFile}
+        onClose={closeFilePreview}
+      />
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-
-          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.2)]">
-
-            {/* HEADER */}
-
-            <div className="mb-5 flex items-center justify-between">
-
-              <h3 className="text-xl font-bold text-slate-800">
-                Chọn loại giấy tờ
-              </h3>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setIsModalOpen(false)
-                }
-                className="text-xl font-medium text-slate-400 transition hover:text-slate-600"
-              >
-                ×
-              </button>
-
-            </div>
-
-            {/* DOCUMENT TYPES */}
-
-            <div className="space-y-3">
-
-              {extensionDocumentTypes.map(
-                type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() =>
-                      handleAddDocument(
-                        type
-                      )
-                    }
-                    className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-base font-medium text-slate-700 transition hover:border-[#32b5b8] hover:bg-[#f0fbfb]"
-                  >
-
-                    <span>
-                      {type}
-                    </span>
-
-                    <span className="text-sm text-slate-400">
-                      →
-                    </span>
-
-                  </button>
-                )
-              )}
-              <div>
-                <span className="text-sm text-slate-400 mt-2 block">
-                  Nếu loại giấy tờ bạn cần không có trong danh sách, vui lòng điền tên giấy tờ xuống dưới và ấn "Thêm giấy tờ" để thêm vào danh sách.
-                </span>
-
-                <input
-                  type="text"
-                  placeholder="Tên giấy tờ"
-                  value={newExtensionDocumentTypes}
-                  onChange={(e) => setNewExtensionDocumentTypes(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#32b5b8]"
-                />
-                <button
-                  className="mt-2 w-full rounded-lg bg-[#32b5b8] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1e7bd8]"
-                  type="button"
-                  onClick={() => {
-                    if (newExtensionDocumentTypes && newExtensionDocumentTypes.trim() !== "") {
-                      handleAddDocument(newExtensionDocumentTypes.trim());
-                      setNewExtensionDocumentTypes("");
-                    }
-                  }}
-                >
-                  Thêm giấy tờ
-                </button>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-      )}
+      <AddDocumentModal
+        open={isModalOpen}
+        supplementalTitles={supplementalDocuments}
+        extensionDocumentTypes={extensionDocumentTypes}
+        newDocumentType={newExtensionDocumentTypes}
+        onClose={() => setIsModalOpen(false)}
+        onSelectSupplemental={handleSelectSupplementalDocument}
+        onAddDocument={handleAddDocument}
+        onNewDocumentTypeChange={setNewExtensionDocumentTypes}
+      />
 
     </div>
   );
@@ -1212,19 +906,35 @@ export default function ScanPage() {
 function getFileColorFromIndex(
   index: number
 ): string {
+  // màu sáng, nổi bật, dễ phân biệt, không quá chói
   const colors = [
-    'bg-slate-400',
-    'bg-teal-400',
-    'bg-blue-400',
-    'bg-purple-400',
-    'bg-pink-400',
-    'bg-orange-400',
-    'bg-green-400',
-    'bg-yellow-400',
-    'bg-red-400',
+    'bg-blue-700',
+    'bg-purple-700',
+    'bg-pink-700',
+    'bg-orange-700',
+    'bg-green-700',
+    'bg-yellow-700',
+    'bg-red-700',
   ];
 
   return colors[
     index % colors.length
   ];
+}
+
+function createScanFileFromPath(
+  imagePath: string
+): ScanFile | null {
+  const normalizedPath = imagePath.replace(/\\/g, '/');
+  const match = normalizedPath.match(/\/patch_([^/]+)\/images\/([^/]+)$/);
+
+  if (!match) {
+    console.error('Đường dẫn ảnh crop không hợp lệ:', imagePath);
+    return null;
+  }
+
+  return {
+    url: imagePath,
+    link: `/scanned-files/patch_${match[1]}/images/${match[2]}`,
+  };
 }

@@ -32,7 +32,7 @@ VIETOCR_DIR = BASE_DIR / "vietocr"
 
 class OCRWorker:
 
-    def __init__(self, redis_client: Redis, debug: bool = False):
+    def __init__(self, redis_client: Redis, debug: bool = True):
         self.redis_client = redis_client
         self.debug = debug
 

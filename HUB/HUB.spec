@@ -69,7 +69,6 @@ pyclipper_datas, pyclipper_binaries, pyclipper_hiddenimports = collect_all(
     "pyclipper"
 )
 
-
 # ============================================================
 # 8. Other PaddleX / PaddleOCR dependencies
 # ============================================================
@@ -94,11 +93,19 @@ extra_packages = [
     "openpyxl",
     "ftfy",
     "imagesize",
+    "ultralytics",
 ]
+
+# ============================================================
+# 9. Ultralytics
+# ============================================================
+ultralytics_datas, ultralytics_binaries, ultralytics_hiddenimports = collect_all(
+    "ultralytics"
+)
 
 
 # ============================================================
-# 9. Collect extra packages
+# 10. Collect extra packages
 # ============================================================
 
 extra_datas = []
@@ -190,6 +197,7 @@ all_binaries = (
     + pypdfium2_binaries
     + opencv_binaries
     + pyclipper_binaries
+    + ultralytics_binaries
 
     + extra_binaries
 )
@@ -227,6 +235,11 @@ all_datas = (
         # OCR models + OCR code/data
         # ----------------------------------------------------
         ("OCR", "OCR"),
+
+        # ----------------------------------------------------
+        # Yolo models
+        # ----------------------------------------------------
+        ("backend/crop", "backend/crop")
     ]
 )
 
@@ -243,6 +256,7 @@ all_hiddenimports = (
     + pypdfium2_hiddenimports
     + opencv_hiddenimports
     + pyclipper_hiddenimports
+    + ultralytics_hiddenimports
 
     + extra_hiddenimports
 )

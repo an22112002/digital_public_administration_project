@@ -1,9 +1,10 @@
 from fastapi import APIRouter
-from backend.services.settingsServices import getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition
-from backend.models.settingsModels import SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest
+from backend.services.settingsServices import getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP
+from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest
 
 settings_router = APIRouter(prefix="/settings", tags=["settings"])
 
+# naps2 settings endpoints
 @settings_router.get("/naps2-path")
 async def get_naps2_path():
     naps2_path = await getNAPS2Path()
@@ -17,6 +18,7 @@ async def set_naps2_path(request: SetNAPS2PathRequest):
     else:
         return {"success": False, "message": "Failed to update NAPS2 path."}
 
+# user UI settings endpoints
 @settings_router.get("/title")
 async def get_title():
     title = await getTitle()
@@ -30,6 +32,7 @@ async def set_title(request: SetTitleRequest):
     else:
         return {"success": False, "message": "Failed to update title."}
 
+# process settings endpoints
 @settings_router.get("/province")
 async def get_province():
     province = await getProvince()
@@ -55,4 +58,31 @@ async def get_commune_list(province_id: int):
 @settings_router.put("/position")
 async def set_position(request: SetPositionRequest):
     result = await savePosition(request.provinceID, request.communeID)
+    return result
+
+# LLM settings endpoints
+
+
+# mode settings endpoints
+@settings_router.get("/server-ip")
+async def get_server_ip():
+    get_mode_result = await getMode()
+    if get_mode_result.get("mode") == "client":
+        return {"server_ip": get_mode_result.get("server_ip")}
+    return {"server_ip": "localhost"}
+
+@settings_router.get("/self-ip")
+async def get_self_ip():
+    result = getSelfIP()
+    return {"self_ip": result}
+
+@settings_router.get("/mode")
+async def get_mode():
+    # Trả về chế độ hiện tại
+    result = await getMode()
+    return result
+
+@settings_router.put("/mode")
+async def set_mode(request: ModeSaveRequest):
+    result = await saveMode(request)
     return result

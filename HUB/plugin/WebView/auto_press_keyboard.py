@@ -84,5 +84,5 @@ async def press_key(
 async def reset():
     mouse.move(coords=(100, 500))  # Di chuyển chuột ra ngoài form
     time.sleep(0.05)
-    mouse.click(button='left', coords=(100, 100))  # Click để đảm bảo form mất focus
+    mouse.click(button='left', coords=(100, 500))  # Click để đảm bảo form mất focus
     time.sleep(0.05)

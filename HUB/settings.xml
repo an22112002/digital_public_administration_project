@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings>
+	<mode>basic</mode>
+	<server_ip>12.12.12.12</server_ip>
+	<LLM_model>qwen3-vl-2b-instruct</LLM_model>
+	<title>Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công</title>
+	<naps2_path>C:\Program Files (x86)\NAPS2\NAPS2.Console.exe</naps2_path>
+	<province>Thành phố Hà Nội</province>
+	<commune>Phường Ba Đình</commune>
+	<scanner_save_path>D:\scanned_files</scanner_save_path>
+</settings>

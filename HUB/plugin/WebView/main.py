@@ -68,6 +68,12 @@ class SupportApi:
 
         return True
 
+    def reset_form_fill(self):
+        """Cho phép WebView chạy lại thao tác nhập form."""
+        with self.fill_form_lock:
+            self.fill_form = False
+        return True
+
     # tải lên file tài liệu
     def upload_file(self, file_path):
         return asyncio.run(self._upload_file(file_path))
@@ -369,6 +375,10 @@ def checkCantReachThisPage(window):
             box.style.color = "black";
             box.style.padding = "10px";
             box.style.zIndex = "9999";
+            box.style.fontSize = "20px";
+            box.style.fontWeight = "bold";
+            box.style.border = "1px solid #ccc";
+            box.style.borderRadius = "5px";
             box.textContent = "Không thể truy cập trang web. Web Dịch Vụ Công có thể đang có quá nhiều truy cập. Vui lòng chờ hoặc thử reload lại trang. Việc mất kết nối có thể mất vài phút để tự khôi phục.";
             document.body.appendChild(box);
         }

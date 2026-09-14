@@ -4,7 +4,7 @@ from ..auto_press_keyboard import press_key, reset
 from pywinauto import keyboard
 import pyperclip
 
-basic_personal_info_fields = ["fullname", "dob", "sex", "CCCD_id", "issue_date", "address", "issue_place"]
+basic_personal_info_fields = ["type_document", "fullname", "dob", "sex", "id_number", "issue_date", "address", "issue_place"]
 
 # Hàm để điền dữ liệu vào form
 async def formInsert(data: list[tuple]):
@@ -38,7 +38,7 @@ async def insertAddress(address: str):
     await formInsert(data)
 
 # nhập thông tin cá nhân của 1 người vào form
-async def insertPersonalInfo(personal_data: list[dict]):
+async def insertWifeInfo(personal_data: list[dict]):
     if not all(field in personal_data for field in basic_personal_info_fields):
         print("Dữ liệu form không đầy đủ. Vui lòng cung cấp tất cả các trường cần thiết.")
         return
@@ -48,9 +48,32 @@ async def insertPersonalInfo(personal_data: list[dict]):
         ("tab", 2),
         ("select", "Kinh"),
         ("select", "Việt Nam"),
-        ("text", personal_data["CCCD_id"]),
-        ("select", "thẻ căn cước"),
-        ("text", personal_data["CCCD_id"]),
+        ("text", personal_data["id_number"]),
+        ("select", personal_data["type_document"]),
+        ("text", personal_data["id_number"]),
+        ("date", personal_data["issue_date"]),
+        ("tab", 2),
+        ("text", personal_data["issue_place"]),
+        ("tab", 2),
+        ("checkbox", 1),
+        ("text", personal_data["address"]),
+        ("select", "Việt Nam")
+    ]
+    await formInsert(data)
+
+async def insertHusbandInfo(personal_data: list[dict]):
+    if not all(field in personal_data for field in basic_personal_info_fields):
+        print("Dữ liệu form không đầy đủ. Vui lòng cung cấp tất cả các trường cần thiết.")
+        return
+    data = [
+        ("text", personal_data["fullname"]),
+        ("date", personal_data["dob"]),
+        ("tab", 2),
+        ("select", "Kinh"),
+        ("select", "Việt Nam"),
+        ("text", personal_data["id_number"]),
+        ("select", personal_data["type_document"]),
+        ("text", personal_data["id_number"]),
         ("date", personal_data["issue_date"]),
         ("tab", 2),
         ("text", personal_data["issue_place"]),
@@ -110,9 +133,9 @@ async def formDangKyKetHonInsert(form_data: list[dict]):
         husband = next((p for p in form_data if p["type"] == "cccd_husband"), None)
         wife = next((p for p in form_data if p["type"] == "cccd_wife"), None)
         # start
-        await insertPersonalInfo(wife)  # điền thông tin cá nhân của vợ
+        await insertWifeInfo(wife)  # điền thông tin cá nhân của vợ
         await fill_extention()
-        await insertPersonalInfo(husband)  # điền thông tin cá nhân của chồng
+        await insertHusbandInfo(husband)  # điền thông tin cá nhân của chồng
         await fill_extention()
         time.sleep(0.05)
         keyboard.send_keys("{TAB}")     # Tab để chuyển đến trường tiếp theo

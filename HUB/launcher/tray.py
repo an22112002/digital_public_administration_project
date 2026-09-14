@@ -1,7 +1,6 @@
 import os
 import sys
 import webbrowser
-import threading
 
 import pystray
 from PIL import Image
@@ -13,12 +12,13 @@ class TrayApp:
     def __init__(self, server):
         self.server = server
         self.icon = None
+        self.ip = "localhost"
 
     def open_admin_ui(self, icon, item):
-        webbrowser.open("http://localhost:5173")
+        webbrowser.open(f"http://{self.ip}:5173")
 
     def open_user_ui(self, icon, item):
-        webbrowser.open("http://localhost:5174")
+        webbrowser.open(f"http://{self.ip}:5174")
 
     def quit(self, icon, item):
         print("Stopping HUB...")
@@ -35,18 +35,9 @@ class TrayApp:
         image = Image.open(icon_path)
 
         menu = pystray.Menu(
-            MenuItem(
-                "Mở giao diện quản trị",
-                self.open_admin_ui
-            ),
-            MenuItem(
-                "Mở giao diện người dùng",
-                self.open_user_ui
-            ),
-            MenuItem(
-                "Dừng",
-                self.quit
-            )
+            MenuItem("Mở giao diện quản trị", self.open_admin_ui),
+            MenuItem("Mở giao diện người dùng", self.open_user_ui),
+            MenuItem("Dừng", self.quit)
         )
 
         self.icon = pystray.Icon(

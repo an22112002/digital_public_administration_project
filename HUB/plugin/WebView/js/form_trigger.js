@@ -23,7 +23,7 @@
 
         Object.assign(box.style, {
             position: "fixed",
-            top: "10px",
+            bottom: "10px",
             left: "10px",
             zIndex: "999999",
             backgroundColor: "#ffffff",
@@ -50,6 +50,7 @@
         // Button
         const button = document.createElement("button");
         button.textContent = "Bắt đầu nhập";
+        let formWasFilled = false;
 
         Object.assign(button.style, {
             border: "none",
@@ -78,6 +79,11 @@
         // Click
         button.onclick = async () => {
 
+            if (formWasFilled) {
+                await window.pywebview.api.reset_form_fill();
+                formWasFilled = false;
+            }
+
             button.disabled = true;
             button.textContent = "Đang nhập...";
 
@@ -90,17 +96,26 @@
                     "User kích hoạt nhập form"
                 );
 
-                await window.pywebview.api.form_fill(
+                const fillResult = await window.pywebview.api.form_fill(
                     data,
                     type
                 );
 
+                if (fillResult !== true) {
+                    throw new Error("Python không thể nhập lại form");
+                }
+
                 text.textContent = "Đã nhập form. Kiểm tra lại thông tin và điền nốt các thông tin còn thiếu nếu có.";
 
-                button.textContent = "Hoàn thành";
+                button.textContent = "Nhập lại";
+                button.disabled = false;
+                button.style.opacity = "1";
+                button.style.cursor = "pointer";
+                formWasFilled = true;
 
-                alert(
-                    "Đã nhập form. Kiểm tra lại thông tin và điền nốt các thông tin còn thiếu nếu có. Rồi bấm 'Xem trước' để tiếp tục."
+                showFormMessage(
+                    "Đã nhập form",
+                    "Kiểm tra lại thông tin và điền nốt các thông tin còn thiếu nếu có. Sau đó bấm 'Xem trước' để tiếp tục."
                 );
 
                 window.pywebview.api.log(
@@ -124,6 +139,76 @@
                 );
             }
         };
+
+        function showFormMessage(title, message) {
+            const overlay = document.createElement("div");
+            Object.assign(overlay.style, {
+                position: "fixed",
+                inset: "0",
+                zIndex: "1000000",
+                backgroundColor: "rgba(0, 0, 0, 0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+                fontFamily: "Arial, sans-serif"
+            });
+
+            const dialog = document.createElement("div");
+            Object.assign(dialog.style, {
+                width: "min(480px, 100%)",
+                backgroundColor: "#ffffff",
+                border: "3px solid #1677ff",
+                borderRadius: "10px",
+                padding: "24px",
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
+                color: "#1f1f1f",
+                fontSize: "18px",
+                lineHeight: "1.5"
+            });
+
+            const heading = document.createElement("div");
+            heading.textContent = title;
+            Object.assign(heading.style, {
+                color: "#0958d9",
+                fontSize: "24px",
+                fontWeight: "700",
+                marginBottom: "12px"
+            });
+
+            const content = document.createElement("div");
+            content.textContent = message;
+            content.style.fontWeight = "600";
+
+            const closeButton = document.createElement("button");
+            closeButton.textContent = "Đã hiểu";
+            Object.assign(closeButton.style, {
+                display: "block",
+                margin: "20px 0 0 auto",
+                border: "none",
+                borderRadius: "6px",
+                backgroundColor: "#1677ff",
+                color: "#fff",
+                padding: "10px 18px",
+                cursor: "pointer",
+                fontSize: "16px",
+                fontWeight: "700"
+            });
+
+            closeButton.onclick = () => overlay.remove();
+            overlay.onclick = event => {
+                if (event.target === overlay) {
+                    overlay.remove();
+                }
+            };
+
+            dialog.appendChild(heading);
+            dialog.appendChild(content);
+            dialog.appendChild(closeButton);
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            closeButton.focus();
+        }
 
         box.appendChild(text);
         box.appendChild(button);
