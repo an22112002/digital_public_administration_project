@@ -1,38 +1,26 @@
 import type { Service } from '../api/servicesAPI';
-import {useState} from "react";
-import { InfoCircleOutlined, InfoCircleTwoTone } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 
-export default function ServiceBtn({ service, index }: { service: Service; index: number }) {
-    const [showInfo, setShowInfo] = useState(false);
-    const navigate = useNavigate();
-    return (
-        <div className="group h-full cursor-pointer rounded-[22px] border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-[0_18px_35px_rgba(13,148,136,0.08)]">
-            <div className="mb-4 flex items-center justify-between">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 text-xs font-bold text-teal-700">
-                    {index + 1}
-                </span>
+export default function ServiceBtn({ service }: { service: Service }) {
+  const navigate = useNavigate();
 
-                <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-slate-600">{service.category.toUpperCase()}</span>
-                    <button
-                        onClick={() => setShowInfo(!showInfo)}
-                        className="text-slate-400 hover:text-teal-600 focus:outline-none"
-                    >
-                        {showInfo ? <InfoCircleTwoTone twoToneColor="#0d9488" /> : <InfoCircleOutlined />}
-                    </button>
-                </div>
-            </div>
-            <h3 className="text-base font-semibold leading-6 text-slate-800 hover:text-teal-600cd ./"
-                onClick={() => navigate(`/scan/${service.serviceID}`)}
-            >{service.title}</h3>
-            
-            {showInfo && (
-                <div className="mt-2 text-sm text-slate-600">
-                    <p>Nội dung:</p>
-                    <p>{service.realTitle}</p>
-                </div>
-            )}
-        </div>
-    )
+  return (
+    <div
+      className="group relative flex h-full min-h-[140px] cursor-pointer flex-col justify-center rounded-[10px] border border-[#e7a666] bg-[#ffbd89] px-6 py-5 text-center shadow-[0_4px_10px_rgba(15,23,42,0.03)] transition-all duration-300 hover:bg-[#ffeedd] hover:shadow-[0_0_0_3px_rgba(162,74,10,0.15),0_8px_20px_rgba(162,74,10,0.16)]"
+      onClick={() => navigate(`/scan/${service.serviceID}`)}
+      title="Chọn dịch vụ"
+    >
+      <span className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-[#d09b6b] bg-[#ffeedd]/80 text-[20px] text-[#a24a0a]/80 shadow-sm opacity-80 transition-all duration-500 animate-pulse">
+        👆
+      </span>
+
+      <div className="mb-2 text-[15px] font-bold uppercase tracking-[0.04em] text-[#a24a0a]">
+        {service.category}
+      </div>
+
+      <div className="text-[15px] font-medium leading-6 text-[#40250e]">
+        {service.title}
+      </div>
+    </div>
+  );
 }
