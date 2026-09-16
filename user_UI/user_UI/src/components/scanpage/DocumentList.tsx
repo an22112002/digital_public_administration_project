@@ -17,13 +17,13 @@ export default function DocumentList({
   onOpenAddDocument,
 }: DocumentListProps) {
   return (
-    <aside className="rounded-[24px] bg-[#f4fbfb] p-5 ring-1 ring-[#dfeff1] xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+    <aside className="rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5] xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-slate-800"><FolderOpenOutlined/>&nbsp;Tài liệu</h2>
         <button
           type="button"
           onClick={onOpenAddDocument}
-          className="rounded-full bg-emerald-100 px-3 py-2 text-sm font-semibold text-[#118a67] transition hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300"
+          className="rounded-full bg-[#ffe1d5] px-3 py-2 text-sm font-semibold text-[#a21608] transition hover:bg-[#ffd0c1]"
         >
           + Thêm tài liệu
         </button>
@@ -44,8 +44,8 @@ export default function DocumentList({
               onClick={() => onSelectDocument(doc.srID)}
               className={`cursor-pointer rounded-2xl border bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all ${
                 isFocus
-                  ? 'border-[#32b5b8] ring-2 ring-[#32b5b8]/30'
-                  : 'border-[#dfecef] hover:border-[#32b5b8]/50'
+                  ? 'border-[#bd2517] ring-2 ring-[#bd2517]/30'
+                  : 'border-[#f2d8cc] hover:border-[#e63a12]/60'
               }`}
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -66,7 +66,7 @@ export default function DocumentList({
                   selectedPageNumbers.map(page => (
                     <span
                       key={`${doc.srID}-page-${page}`}
-                      className="rounded-full bg-[#e6f7f5] px-2 py-0.5 text-xs font-semibold text-[#168b86]"
+                      className="rounded-full bg-[#ffe9df] px-2 py-0.5 text-xs font-semibold text-[#a21608]"
                     >
                       Page {page}
                     </span>

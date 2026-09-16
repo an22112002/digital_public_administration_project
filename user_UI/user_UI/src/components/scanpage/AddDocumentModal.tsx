@@ -65,7 +65,7 @@ export default function AddDocumentModal({
                     key={document.srID}
                     type="button"
                     onClick={() => onSelectSupplemental(document.srID)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-base font-medium text-slate-700 transition hover:border-[#32b5b8] hover:bg-[#f0fbfb]"
+                    className="flex w-full items-center justify-between rounded-2xl border border-[#f2d8cc] bg-[#fffaf7] px-4 py-3 text-left text-base font-medium text-slate-700 transition hover:border-[#e63a12] hover:bg-[#fff0eb]"
                   >
                     <span>{document.title}</span>
                     <span className="text-sm text-slate-400">→</span>
@@ -85,7 +85,7 @@ export default function AddDocumentModal({
                 placeholder="Tên giấy tờ"
                 value={newDocumentType}
                 onChange={event => onNewDocumentTypeChange(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#32b5b8]"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#bd2517]"
               />
               {documentNameSuggestions.length > 0 && (
                 <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
@@ -94,7 +94,7 @@ export default function AddDocumentModal({
                       key={type}
                       type="button"
                       onClick={() => onNewDocumentTypeChange(type)}
-                      className="block w-full px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-[#f0fbfb]"
+                      className="block w-full px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-[#fff0eb]"
                     >
                       {type}
                     </button>
@@ -103,7 +103,7 @@ export default function AddDocumentModal({
               )}
             </div>
             <button
-              className="mt-2 w-full rounded-lg bg-[#32b5b8] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1e7bd8]"
+              className="mt-2 w-full rounded-lg bg-[#bd2517] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a51f13]"
               type="button"
               onClick={() => {
                 const type = newDocumentType?.trim();

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '../../header/header';
+import aiBootsImage from '../../assets/ai boots.png';
 import { useParams } from 'react-router-dom';
 import { getScannerOptions } from '../../api/scannerAPI';
 import type { ScannerOption } from '../../api/scannerAPI';
@@ -10,14 +11,14 @@ import {
   ScanOutlined,
   ArrowRightOutlined,
 } from "@ant-design/icons";
-import { backendUrl, websocketUrl } from '../../api/base';
+import { websocketUrl } from '../../api/base';
 import AddDocumentModal from '../../components/scanpage/AddDocumentModal';
 import DocumentList from '../../components/scanpage/DocumentList';
 import PreviewModal from '../../components/scanpage/PreviewModal';
 import ScannedFiles from '../../components/scanpage/ScannedFiles';
 import type { DocumentItem, ScanFile, SendFile } from '../../components/scanpage/types';
 
-export default function ScanPage() {
+export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const websocket = useRef<WebSocket | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
@@ -149,9 +150,8 @@ export default function ScanPage() {
         return;
       }
 
-      const croppedImagePaths = normalizeCroppedImagePaths(data);
-      const croppedImages: ScanFile[] = croppedImagePaths
-        .map(imagePath => createScanFileFromPath(imagePath))
+      const croppedImages: ScanFile[] = (data['cropped_images'] ?? [])
+        .map((imagePath: string) => createScanFileFromPath(imagePath))
         .filter((file: ScanFile | null): file is ScanFile => file !== null);
       if (croppedImages.length > 0) {
         setScannedFiles(previousFiles => {
@@ -303,10 +303,7 @@ export default function ScanPage() {
     setPreviewZoom(1);
   };
 
-  const handleCropFile = (
-    file: ScanFile,
-    position?: [number, number, number, number]
-  ) => {
+  const handleCropFile = (file: ScanFile) => {
     const ws = websocket.current;
 
     if (ws?.readyState !== WebSocket.OPEN) {
@@ -319,7 +316,6 @@ export default function ScanPage() {
       type: 'crop_image',
       request: {
         image: file.url,
-        position: position ?? null,
       },
     }));
   };
@@ -657,12 +653,12 @@ export default function ScanPage() {
   // =========================================================
 
   return (
-    <div className="min-h-screen bg-[#eef5f4] px-4 py-8 text-slate-800">
+    <div className="min-h-screen bg-[#fff7f0] px-4 py-8 text-slate-800">
       <Modal 
         open={isInProcess} footer={null} closable={false} centered>
         <div className="flex flex-col items-center gap-4">
           <svg
-            className="h-12 w-12 animate-spin text-[#32b5b8]"
+            className="h-12 w-12 animate-spin text-[#bd2517]"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -690,6 +686,12 @@ export default function ScanPage() {
       <div className="mx-auto max-w-6xl">
 
         <Header />
+
+        {kiosk && (
+          <section className="kiots-scan-ai" aria-label="Trợ lý AI hỗ trợ dịch vụ công">
+            <img src={aiBootsImage} alt="Trợ lý AI hỗ trợ dịch vụ công" />
+          </section>
+        )}
 
         {serviceName && (
           <div className="px-6">
@@ -739,13 +741,13 @@ export default function ScanPage() {
           </div>
         )}
 
-        <main className="rounded-[30px] bg-white p-5 shadow-[0_30px_70px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 md:p-8">
+        <main className="rounded-[30px] bg-white p-5 shadow-[0_30px_70px_rgba(146,21,7,0.1)] ring-1 ring-[#f7c7b5] md:p-8">
 
           <div className="flex flex-col gap-4 border-t border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
 
             {/* SCANNER */}
 
-            <div className="flex items-center gap-3 justify-center rounded-[16px] bg-[#28a9a9] px-6 py-4 text-sm font-medium text-white shadow-[0_12px_30px_rgba(40,169,169,0.35)] transition hover:bg-[#219a9a] sm:justify-start">
+            <div className="flex items-center gap-3 justify-center rounded-[16px] bg-[#bd2517] px-6 py-4 text-sm font-medium text-white shadow-[0_12px_30px_rgba(189,37,23,0.3)] transition hover:bg-[#a51f13] sm:justify-start">
 
               <label
                 className="text-sm font-lg text-white"
@@ -762,7 +764,7 @@ export default function ScanPage() {
                     event.target.value
                   )
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-[#32b5b8]"
+                className="rounded-xl border border-[#f2c7b8] bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-[#bd2517]"
               >
                 {scannerOptions.length === 0 ? (
                   <option value="">
@@ -797,13 +799,13 @@ export default function ScanPage() {
               <div className="relative">
                 {actionHint === 'import' && (
                   <ArrowDownOutlined
-                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#3978c7]"
+                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#e63a12]"
                     aria-label="Mũi tên hướng dẫn nộp file"
                   />
                 )}
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center rounded-[16px] bg-[#3978c7] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(57,120,199,0.28)] transition hover:bg-[#2f68b1]"
+                  className="inline-flex items-center justify-center rounded-[16px] bg-[#e63a12] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(230,58,18,0.28)] transition hover:bg-[#c92f0d]"
                   onClick={() => {
                     setActionHint(null);
                     fileInput.current?.click();
@@ -817,13 +819,13 @@ export default function ScanPage() {
               <div className="relative">
                 {actionHint === 'scan' && (
                   <ArrowDownOutlined
-                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#28a9a9]"
+                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#bd2517]"
                     aria-label="Mũi tên hướng dẫn quét"
                   />
                 )}
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center rounded-[16px] bg-[#28a9a9] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(40,169,169,0.35)] transition hover:bg-[#219a9a]"
+                  className="inline-flex items-center justify-center rounded-[16px] bg-[#bd2517] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(189,37,23,0.3)] transition hover:bg-[#a51f13]"
                   onClick={startScan}
                 >
                   <ScanOutlined />&nbsp;
@@ -833,7 +835,7 @@ export default function ScanPage() {
 
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-[16px] bg-[#1ea56d] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(30,165,109,0.3)] transition hover:bg-[#17945f]"
+                className="inline-flex items-center justify-center rounded-[16px] bg-[#921507] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(146,21,7,0.3)] transition hover:bg-[#781105]"
                 onClick={
                   handleSubmitDocuments
                 }
@@ -930,20 +932,10 @@ function getFileColorFromIndex(
 function createScanFileFromPath(
   imagePath: string
 ): ScanFile | null {
-  const normalizedPath = imagePath
-    .replace(/\\/g, '/')
-    .replace(backendUrl, '');
+  const normalizedPath = imagePath.replace(/\\/g, '/');
   const match = normalizedPath.match(/\/patch_([^/]+)\/images\/([^/]+)$/);
 
   if (!match) {
-    const scannedFileIndex = normalizedPath.indexOf('/scanned-files/');
-    if (scannedFileIndex >= 0) {
-      return {
-        url: imagePath,
-        link: normalizedPath.slice(scannedFileIndex),
-      };
-    }
-
     console.error('Đường dẫn ảnh crop không hợp lệ:', imagePath);
     return null;
   }
@@ -952,30 +944,4 @@ function createScanFileFromPath(
     url: imagePath,
     link: `/scanned-files/patch_${match[1]}/images/${match[2]}`,
   };
-}
-
-function normalizeCroppedImagePaths(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.flatMap(item => normalizeCroppedImagePaths(item));
-  }
-
-  if (typeof value === 'string') {
-    return [value];
-  }
-
-  if (value && typeof value === 'object') {
-    const response = value as Record<string, unknown>;
-    const nestedImages =
-      response['cropped_images'] ??
-      response['cropped_image'] ??
-      response['images'] ??
-      response['image'] ??
-      response['path'] ??
-      response['url'] ??
-      response['result'] ??
-      response['data'];
-    return normalizeCroppedImagePaths(nestedImages);
-  }
-
-  return [];
 }

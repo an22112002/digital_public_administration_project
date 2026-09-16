@@ -20,7 +20,7 @@ export default function ScannedFiles({
   onPreviewFile,
 }: ScannedFilesProps) {
   return (
-    <section className="rounded-[24px] bg-[#f4fbfb] p-5 ring-1 ring-[#dfeff1]">
+    <section className="rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5]">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-800">File quét</h2>
       </div>
@@ -40,8 +40,8 @@ export default function ScannedFiles({
                 onClick={() => onSelectFile(file)}
                 className={`cursor-pointer rounded-[18px] border bg-gray-300 p-4 shadow-[0_8px_20px_rgba(15,23,42,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.24)] ${
                   isSelected
-                    ? 'border-[#0d8589] bg-[#e9fffc] shadow-[0_10px_30px_rgba(21,155,159,0.45)] ring-2 ring-[#159b9f]/70'
-                    : 'border-[#dfecef]'
+                    ? 'border-[#bd2517] bg-[#fff0eb] shadow-[0_10px_30px_rgba(189,37,23,0.25)] ring-2 ring-[#e63a12]/50'
+                      : 'border-[#f2d8cc]'
                 }`}
               >
                 <div className="mb-3 flex items-center justify-around gap-3 w-full">
@@ -72,7 +72,7 @@ export default function ScannedFiles({
                 </div>
 
                 <div
-                  className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#effaf7] via-[#f4fbfb] to-[#edf5ff]"
+                  className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#fff1e8] via-[#fffaf7] to-[#ffe8de]"
                   onClick={event => {
                     event.stopPropagation();
                     onPreviewFile(file);
