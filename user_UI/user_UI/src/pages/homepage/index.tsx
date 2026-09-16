@@ -46,8 +46,10 @@ export default function HomePage() {
           <section className="overflow-hidden rounded-[30px] border border-[#ffd8ba] bg-gradient-to-r from-[#ffb86d] via-[#d65d12] to-[#8d3b05] p-4 shadow-[0_16px_50px_rgba(15,23,42,0.12)] md:p-8">
             <div className="grid items-center gap-8 lg:grid-cols-[1fr_320px]">
               <div className="space-y-6">
-                <div className="inline-flex items-center rounded-full border border-white/70 bg-white/25 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-sm">
-                  DỊCH VỤ CÔNG TRỰC TUYẾN
+                <div className="flex w-full justify-center lg:justify-center">
+                  <div className="inline-flex w-full max-w-[560px] items-center justify-center rounded-full border-2 border-white/90 bg-[#fffaf4] px-6 py-3 text-center text-[12px] font-black uppercase tracking-[0.22em] text-[#a84802] shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:text-[14px]">
+                    DỊCH VỤ CÔNG TRỰC TUYẾN
+                  </div>
                 </div>
 
                 <div className="w-full space-y-4">
@@ -89,7 +91,7 @@ export default function HomePage() {
                     onChange={(event) => setSelectedCategory(event.target.value)}
                     className="w-full rounded-[14px] border border-white/80 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:border-orange-500"
                   >
-                    <option value="">Tất cả dịch vụ</option>
+                    <option value="">Tất Cả Dịch Vụ</option>
                     {categories.map((category) => (
                       <option key={category.toUpperCase()} value={category}>
                         {category.toUpperCase()}
@@ -123,8 +125,8 @@ export default function HomePage() {
 
             {services.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {services.slice(0, 3).map((service) => (
-                  <ServiceBtn service={service} />
+                {services.slice(0, 3).map((service, index) => (
+                  <ServiceBtn key={service.serviceID} service={service} index={index + 1} />
                 ))}
               </div>
             ) : (

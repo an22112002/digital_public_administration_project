@@ -11,12 +11,18 @@ type HeaderProps = {
 export default function Header({
   action,
 }: HeaderProps) {
-  const [pageTitle, setPageTitle] = useState<string>('');
+  const [pageTitle, setPageTitle] = useState<string>('Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công');
 
   useEffect(() => {
     const fetchTitle = async () => {
-      const title = await getTitle();
-      setPageTitle(title.title);
+      try {
+        const title = await getTitle();
+        if (title?.title) {
+          setPageTitle(title.title);
+        }
+      } catch (error) {
+        console.error('Error fetching title:', error);
+      }
     };
     fetchTitle();
   }, []);

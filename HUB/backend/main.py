@@ -15,6 +15,9 @@ from backend.routers.settingsRouter import settings_router
 from backend.routers.processRouter import process_router
 from backend.routers.serviceRouter import service_router
 
+from backend.services.settingsServices import getMode
+from backend.services.LLMServices import checkLMStudioServerRunning, loadLocalLMStudioModel, unloadLocalLMStudioModel
+
 from backend.worker.Manager import WorkerManager
 from backend.log.main import install_exception_hooks, log_exception
 from database.index import db
@@ -93,6 +96,9 @@ class Backend:
         self.host = host
         self.port = port
 
+        self.mode = "basic"
+        self.server_ip = None
+
         # ------------------------------------------------------
         # Unique ID cho instance HUB này
         # ------------------------------------------------------
@@ -149,6 +155,9 @@ class Backend:
     # ==========================================================
     @asynccontextmanager
     async def lifespan(self, app: FastAPI):
+        mode = await getMode()
+        self.mode = mode.get("mode", "basic")
+        self.server_ip = mode.get("server_ip", None)
 
         print("[Start] Starting HUB backend...")
         install_exception_hooks("HUB")
@@ -170,9 +179,11 @@ class Backend:
                     "is already running"
                 )
 
-                raise RuntimeError(
-                    "Another HUB instance is already running"
-                )
+                app.state.should_exit = True
+
+                # Không start bất kỳ thứ gì và exit ngay lập tức.
+
+                raise SystemExit(1)
 
             windows_mutex_acquired = True
 
@@ -203,9 +214,9 @@ class Backend:
                     "already owns the Redis lock"
                 )
 
-                raise RuntimeError(
-                    "Another HUB instance already owns the Redis lock"
-                )
+                app.state.should_exit = True
+
+                return
 
             redis_lock_acquired = True
 
@@ -263,11 +274,38 @@ class Backend:
                 "[Start] HUB backend started"
             )
 
+            # =================================================
+            # 8. MODE
+            # =================================================
+            if self.mode == "basic":
+                print("[Start] Running in BASIC mode")
+            elif self.mode == "server":
+                # kiểm tra LM studio, load model
+                result = await checkLMStudioServerRunning("localhost")
+                if result is True:
+                    await loadLocalLMStudioModel()
+                    print("[Start] Running in SERVER mode")
+                else:
+                    raise ConnectionError(f"Cannot connect to LM Studio server at {self.server_ip}")
+            elif self.mode == "client":
+                if self.server_ip is None:
+                    raise ValueError("Server IP not specified")
+                result = await checkLMStudioServerRunning(self.server_ip)
+                if result is False:
+                    raise ConnectionError(f"Cannot connect to LM Studio server at {self.server_ip}")
+                print("[Start] Running in CLIENT mode")
+
             # ==================================================
             # RUNNING
             # ==================================================
 
             yield
+
+        except SystemExit:
+
+            # Không log gì cả, chỉ exit ngay lập tức.
+
+            raise
 
         except Exception as e:
 
@@ -284,6 +322,15 @@ class Backend:
             print(
                 "[End] Shutting down HUB backend..."
             )
+            # =================================================
+            ## UNLOAD LLM MODEL
+            # =================================================
+            if self.mode == "server":
+                try:
+                    await unloadLocalLMStudioModel()
+                except Exception as e:
+                    log_exception(e, "HUB")
+                    print(f"[Error] LLM model unload failed: {e}")
 
             # ==================================================
             # STOP WORKER
@@ -692,4 +739,4 @@ if __name__ == "__main__":
     import uvicorn
     backend = Backend()
     uvicorn.run(backend.get_app(), host=backend.host, port=backend.port)
-    # uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    # uvicorn backend.main:app --host 0.0.0.0 --port 8000 --relo

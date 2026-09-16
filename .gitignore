@@ -26,6 +26,7 @@ deploy/
 
 # AI models
 HUB/OCR/models/
+HUB/backend/crop/models/
 
 
 # Python packaging

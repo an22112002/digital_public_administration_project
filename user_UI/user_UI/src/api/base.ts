@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const backendUrl = "http://localhost:8000";
+export const backendUrl = "http://localhost:8000";
+export const websocketUrl = "ws://localhost:8000";
 
 const HUB_api = axios.create({
     baseURL: backendUrl,

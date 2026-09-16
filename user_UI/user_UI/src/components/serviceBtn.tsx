@@ -1,7 +1,7 @@
 import type { Service } from '../api/servicesAPI';
 import { useNavigate } from 'react-router-dom';
 
-export default function ServiceBtn({ service }: { service: Service }) {
+export default function ServiceBtn({ service, index = 1 }: { service: Service; index?: number }) {
   const navigate = useNavigate();
 
   return (
@@ -19,6 +19,9 @@ export default function ServiceBtn({ service }: { service: Service }) {
       </div>
 
       <div className="text-[15px] font-medium leading-6 text-[#40250e]">
+        <span className="mr-2 inline-flex h-7 min-w-[28px] items-center justify-center rounded-full bg-[#a24a0a] px-2 text-[12px] font-black text-white shadow-sm">
+          {index}
+        </span>
         {service.title}
       </div>
     </div>

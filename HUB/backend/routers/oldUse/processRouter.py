@@ -5,8 +5,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.services.processServices import processWebSocket, startProcess
 from backend.log.main import log_exception
 from contextlib import asynccontextmanager
-from backend.models.processModels import UserTask
-from backend.services.settingsServices import getMode
 
 # ----------------------------------
 from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, SCANNER_SAVE_PATH
@@ -50,18 +48,18 @@ async def start_process(websocket: WebSocket, service_id: str):
     await websocket.accept()
 
     try:
-        # đóng gói tạo user task
-        mode_result = await getMode()
-        mode = mode_result.get("mode", "basic")
-        server_ip = mode_result.get("server_ip", "localhost")
+        # gọi hàm startProcess từ service
         timestamp = int(time.time())
         working_timestamps.add(timestamp)
         service, documents = startProcess(service_id)
         for doc in documents:
             doc["srID"] = str(doc["srID"])
             doc["required"] = bool(doc["required"])
-        user_task = UserTask(mode=mode, server_ip=server_ip, timestamp=timestamp, websocket=websocket, service=service, required_documents=documents)
-
+        data_ready = {
+            "status": False,
+            "url": None,
+            "data_process": None
+        }
         # gửi dữ liệu về client qua websocket
         await websocket.send_json({
             "service": service,
@@ -73,7 +71,7 @@ async def start_process(websocket: WebSocket, service_id: str):
         while True:
             data = await websocket.receive_json()
             # xử lý dữ liệu nhận được từ client
-            should_continue = await processWebSocket(data, user_task)
+            should_continue = await processWebSocket(data, service, documents, timestamp, data_ready, websocket)
             if not should_continue:
                 break
     except ValueError as e:

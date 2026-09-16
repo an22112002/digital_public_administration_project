@@ -9,6 +9,11 @@ export interface TitleResponse {
     title: string;
 }
 
+export interface ModeResponse {
+    mode: "basic" | "server" | "client";
+    server_ip: string | null;
+}
+
 interface ProvinceOption {
     name: string;
     id: string;
@@ -69,5 +74,15 @@ export async function listCommune(id: string) {
 
 export async function saveNewPosition(provinceID: string, communeID: string) {
     const response = await HUB_api.put(`/settings/position`, { provinceID: provinceID, communeID: communeID });
+    return response.data as UpdateResponse;
+}
+
+export async function getMode() {
+    const response = await HUB_api.get("/settings/mode");
+    return response.data as ModeResponse;
+}
+
+export async function saveMode(data: ModeResponse) {
+    const response = await HUB_api.put("/settings/mode", data);
     return response.data as UpdateResponse;
 }

@@ -99,7 +99,7 @@ async def scan_documents_to_folder(
         return ScanStatus.UNKNOWN_ERROR, "NAPS2 scan timeout"
 
     except PermissionError:
-        return ScanStatus.UNKNOWN_ERROR, "Permission denied"
+        return ScanStatus.UNKNOWN_ERROR, "Từ chối quyền truy cập."
 
     except OSError as e:
         return ScanStatus.UNKNOWN_ERROR, str(e)
@@ -114,7 +114,7 @@ async def scan_documents_to_folder(
         files = list(output_folder_path.glob("*.pdf"))
         # ko có tệp PDF nào được tạo ra, có thể là do không có giấy tờ được quét
         if not files:
-            return ScanStatus.NO_DOCUMENT, "No scanned pages"
+            return ScanStatus.NO_DOCUMENT, "Không có giấy tờ nào được quét. Vui lòng kiểm tra lại máy scan và giấy tờ."
 
         return ScanStatus.SUCCESS, None
 
