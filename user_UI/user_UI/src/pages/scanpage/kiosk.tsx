@@ -1,29 +1,29 @@
-import ScanPage from './index';
+﻿import ScanPage from './index';
 
-export default function KiotsScanPage() {
+export default function KioskScanPage() {
   return (
-    <div className="kiots-scan-page">
+    <div className="kiosk-scan-page">
       <ScanPage kiosk />
       <style>{`
-        .kiots-scan-page {
+        .kiosk-scan-page {
           min-height: 100vh;
           background: #fff8f3;
           color: #263238;
           font-family: 'Inter', 'Segoe UI', sans-serif;
         }
 
-        .kiots-scan-page > div {
+        .kiosk-scan-page > div {
           min-height: 100vh;
           box-sizing: border-box;
           padding: 16px 24px 32px;
           background: #fff8f3;
         }
 
-        .kiots-scan-page > div > div {
+        .kiosk-scan-page > div > div {
           max-width: 100%;
         }
 
-        .kiots-scan-page header {
+        .kiosk-scan-page header {
           margin-bottom: 16px;
           border-radius: 18px;
           padding: 16px 24px;
@@ -31,7 +31,7 @@ export default function KiotsScanPage() {
           box-shadow: 0 8px 22px rgba(117, 48, 27, .18);
         }
 
-        .kiots-scan-ai {
+        .kiosk-scan-ai {
           min-height: 220px;
           margin: 0 0 18px;
           padding: 14px 24px;
@@ -45,7 +45,7 @@ export default function KiotsScanPage() {
           box-shadow: 0 8px 20px rgba(117, 48, 27, .14);
         }
 
-        .kiots-scan-ai img {
+        .kiosk-scan-ai img {
           display: block;
           width: min(100%, 760px);
           height: 190px;
@@ -53,7 +53,7 @@ export default function KiotsScanPage() {
           object-position: center;
         }
 
-        .kiots-scan-page main {
+        .kiosk-scan-page main {
           border-radius: 20px;
           padding: 20px;
           background: #fff;
@@ -61,55 +61,85 @@ export default function KiotsScanPage() {
           ring-color: #efc7b5;
         }
 
-        .kiots-scan-page .grid.xl\\:grid-cols-\\[1\\.35fr_0\\.65fr\\] {
+        .kiosk-scan-page .grid.xl\\:grid-cols-\\[1\\.35fr_0\\.65fr\\] {
           grid-template-columns: minmax(0, 1fr);
         }
 
-        .kiots-scan-page button,
-        .kiots-scan-page select,
-        .kiots-scan-page input {
+        .kiosk-scan-page button,
+        .kiosk-scan-page select,
+        .kiosk-scan-page input {
           font-size: 18px;
         }
 
-        .kiots-scan-page main > div[class*="border-t"] {
+        .kiosk-scan-page main > div[class*="border-t"] {
           display: flex;
           flex-wrap: wrap;
           align-items: stretch;
           gap: 14px;
         }
 
-        .kiots-scan-page main > div[class*="border-t"] > div:first-child {
+        .kiosk-scan-page main > div[class*="border-t"] > div:first-child {
           flex: 1 1 360px;
           min-width: 300px;
         }
 
-        .kiots-scan-page main > div[class*="border-t"] > div:nth-child(2) {
+        .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2) {
           display: flex;
           flex: 1 1 520px;
           flex-wrap: wrap;
           gap: 12px;
         }
 
-        .kiots-scan-page main > div[class*="border-t"] > div:nth-child(2) > div,
-        .kiots-scan-page main > div[class*="border-t"] > div:nth-child(2) > button {
+        .kiosk-action-buttons {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          align-items: end;
+          gap: 12px;
+          flex: 1 1 520px;
+        }
+
+        .kiosk-action-button {
+          position: relative;
+          min-width: 0;
+        }
+
+        .kiosk-action-button > button {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .kiosk-action-button > .anticon {
+          top: -2.25rem;
+          left: 50%;
+          right: auto;
+          transform: translateX(-50%);
+          pointer-events: none;
+        }
+
+        .kiosk-submit-button {
+          min-height: 58px;
+        }
+
+        .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2) > div,
+        .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2) > button {
           flex: 1 1 150px;
           min-width: 140px;
         }
 
-        .kiots-scan-page main > div[class*="border-t"] button {
+        .kiosk-scan-page main > div[class*="border-t"] button {
           min-height: 58px;
           padding: 12px 18px;
           white-space: normal;
           line-height: 1.2;
         }
 
-        .kiots-scan-page main > div[class*="border-t"] select {
+        .kiosk-scan-page main > div[class*="border-t"] select {
           min-width: 180px;
           min-height: 42px;
         }
 
         @media (min-width: 700px) and (max-width: 1399px) {
-          .kiots-scan-page > div {
+          .kiosk-scan-page > div {
             width: 100%;
             max-width: 1080px;
             min-height: 1920px;
@@ -117,52 +147,63 @@ export default function KiotsScanPage() {
             padding: 24px 32px 40px;
           }
 
-          .kiots-scan-page header {
+          .kiosk-scan-page header {
             margin-bottom: 24px;
             padding: 22px 30px;
           }
 
-          .kiots-scan-page main {
+          .kiosk-scan-page main {
             padding: 28px;
           }
 
-          .kiots-scan-ai {
+          .kiosk-scan-ai {
             min-height: 320px;
             padding: 20px 32px;
             margin-bottom: 24px;
           }
 
-          .kiots-scan-ai img {
+          .kiosk-scan-ai img {
             width: min(100%, 900px);
             height: 280px;
           }
 
-          .kiots-scan-page main > div[class*="border-t"] {
+          .kiosk-scan-page main > div[class*="border-t"] {
             flex-wrap: nowrap;
           }
 
-          .kiots-scan-page main > div[class*="border-t"] > div:nth-child(2) {
+          .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2),
+          .kiosk-action-buttons {
             flex-wrap: nowrap;
           }
 
-          .kiots-scan-page main > div[class*="border-t"] > div:nth-child(2) > div,
-          .kiots-scan-page main > div[class*="border-t"] > div:nth-child(2) > button {
+          .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2) > div,
+          .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2) > button {
             min-width: 150px;
           }
         }
 
+        @media (max-width: 699px) {
+          .kiosk-action-buttons {
+            grid-template-columns: 1fr;
+          }
+
+          .kiosk-action-button > .anticon {
+            top: -1.9rem;
+          }
+        }
+
         @media (min-width: 1400px) {
-          .kiots-scan-page > div {
+          .kiosk-scan-page > div {
             min-height: 1080px;
             padding: 18px 42px 30px;
           }
 
-          .kiots-scan-page header {
+          .kiosk-scan-page header {
             margin-bottom: 14px;
             padding: 14px 24px;
           }
 
-          .kiots-scan-page main {
+          .kiosk-scan-page main {
             padding: 22px;
           }
         }
@@ -170,3 +211,4 @@ export default function KiotsScanPage() {
     </div>
   );
 }
+

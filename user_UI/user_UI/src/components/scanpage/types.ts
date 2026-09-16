@@ -1,4 +1,4 @@
-export interface DocumentItem {
+﻿export interface DocumentItem {
   srID: string;
   serviceID: number;
   code: string;

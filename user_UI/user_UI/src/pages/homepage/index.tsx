@@ -1,4 +1,4 @@
-import Header from '../../header/header';
+﻿import Header from '../../header/header';
 import aiBootsImage from '../../assets/ai boots.png';
 import type { Service } from '../../api/servicesAPI';
 import ServiceBtn from '../../components/serviceBtn';
@@ -140,3 +140,4 @@ export default function HomePage() {
     </div>
   );
 }
+

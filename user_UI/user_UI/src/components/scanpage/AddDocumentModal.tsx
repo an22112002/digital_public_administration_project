@@ -1,4 +1,4 @@
-interface AddDocumentModalProps {
+﻿interface AddDocumentModalProps {
   open: boolean;
   supplementalTitles: { srID: string; title: string }[];
   extensionDocumentTypes: string[];

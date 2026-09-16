@@ -1,4 +1,4 @@
-import { backendUrl } from '../../api/base';
+﻿import { backendUrl } from '../../api/base';
 import { DeleteOutlined } from '@ant-design/icons';
 import type { ScanFile } from './types';
 

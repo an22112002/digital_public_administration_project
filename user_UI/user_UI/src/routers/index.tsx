@@ -1,8 +1,8 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from '../pages/homepage';
-import KiotsHomePage from '../pages/homepage/kiots';
+import KioskHomePage from '../pages/homepage/kiosk';
 import ScanPage from '../pages/scanpage';
-import KiotsScanPage from '../pages/scanpage/kiots';
+import KioskScanPage from '../pages/scanpage/kiosk';
 
 export default function Routers() {
   return (
@@ -13,8 +13,8 @@ export default function Routers() {
           <Route path="scan/:serviceID" element={<ScanPage />} />
         </Route>
         <Route path="/kiosk">
-          <Route index element={<KiotsHomePage />} />
-          <Route path="scan/:serviceID" element={<KiotsScanPage />} />
+          <Route index element={<KioskHomePage />} />
+          <Route path="scan/:serviceID" element={<KioskScanPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

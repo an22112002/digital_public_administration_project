@@ -1,4 +1,4 @@
-import type { DocumentItem, ScanFile } from './types';
+﻿import type { DocumentItem, ScanFile } from './types';
 import { FolderOpenOutlined } from "@ant-design/icons";
 
 interface DocumentListProps {

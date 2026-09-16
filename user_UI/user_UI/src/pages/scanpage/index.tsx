@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import Header from '../../header/header';
 import aiBootsImage from '../../assets/ai boots.png';
 import { useParams } from 'react-router-dom';
@@ -692,7 +692,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
         <Header />
 
         {kiosk && (
-          <section className="kiots-scan-ai" aria-label="Trợ lý AI hỗ trợ dịch vụ công">
+          <section className="kiosk-scan-ai" aria-label="Trợ lý AI hỗ trợ dịch vụ công">
             <img src={aiBootsImage} alt="Trợ lý AI hỗ trợ dịch vụ công" />
           </section>
         )}
@@ -790,7 +790,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
             {/* BUTTONS */}
 
-            <div className="flex items-center gap-3">
+            <div className={kiosk ? 'kiosk-action-buttons' : 'flex items-center gap-3'}>
 
               <input
                 ref={fileInput}
@@ -800,7 +800,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
                 onChange={handleImportFile}
               />
 
-              <div className="relative">
+              <div className={kiosk ? 'kiosk-action-button' : 'relative'}>
                 {actionHint === 'import' && (
                   <ArrowDownOutlined
                     className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#e63a12]"
@@ -820,7 +820,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
                 </button>
               </div>
 
-              <div className="relative">
+              <div className={kiosk ? 'kiosk-action-button' : 'relative'}>
                 {actionHint === 'scan' && (
                   <ArrowDownOutlined
                     className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#bd2517]"
@@ -839,7 +839,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-[16px] bg-[#921507] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(146,21,7,0.3)] transition hover:bg-[#781105]"
+                className={`${kiosk ? 'kiosk-action-button kiosk-submit-button ' : ''}inline-flex items-center justify-center rounded-[16px] bg-[#921507] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(146,21,7,0.3)] transition hover:bg-[#781105]`}
                 onClick={
                   handleSubmitDocuments
                 }

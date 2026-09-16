@@ -1,4 +1,4 @@
-import HUB_api from "./base"
+﻿import HUB_api from "./base"
 
 export interface ScannerDevice {
     name: string;
