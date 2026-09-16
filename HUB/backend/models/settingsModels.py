@@ -19,3 +19,6 @@ class SetLLMSettingRequest(BaseModel):
     model: str
     gpu_use: float
     context_length: int
+
+class SetUIUserRequest(BaseModel):
+    ui: Literal["desktop", "kiosk"]

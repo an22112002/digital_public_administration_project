@@ -3,6 +3,26 @@ import subprocess
 from backend.config import open_settings
 from backend.utils import image_to_base64
 
+async def getLMStudioModels() -> list:
+    """
+    Lấy danh sách các mô hình LLM có sẵn từ LM Studio server.
+    Returns:
+        list: Danh sách các mô hình LLM có sẵn.
+    """
+    server_ip = "localhost"
+
+    try:
+        response = requests.get(f"http://{server_ip}:1234/api/v1/models", timeout=5)
+        response.raise_for_status()  # Kiểm tra xem có lỗi HTTP không
+        models = response.json().get("models", [])
+        result = []
+        for model in models:
+            result.append(model.get("key", "Unknown"))
+        return result
+    except requests.RequestException as e:
+        print(f"[LM Studio] Error occurred while fetching models: {e}")
+        return []
+
 async def checkLMStudioServerRunning(server_ip: str) -> bool:
     """
     Kiểm tra xem LM Studio server có đang chạy hay không.

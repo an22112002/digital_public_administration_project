@@ -3,6 +3,8 @@
 from PyInstaller.utils.hooks import (
     collect_all,
     collect_dynamic_libs,
+    collect_data_files,
+    collect_submodules,
     copy_metadata,
 )
 
@@ -15,7 +17,34 @@ pyzbar_binaries = collect_dynamic_libs("pyzbar")
 
 
 # ============================================================
-# 2. pypdfium2
+# 2. PaddlePaddle
+# ============================================================
+
+paddle_datas, paddle_binaries, paddle_hiddenimports = collect_all(
+    "paddle"
+)
+
+
+# ============================================================
+# 3. PaddleX
+# ============================================================
+
+paddlex_datas, paddlex_binaries, paddlex_hiddenimports = collect_all(
+    "paddlex"
+)
+
+
+# ============================================================
+# 4. PaddleOCR
+# ============================================================
+
+paddleocr_datas, paddleocr_binaries, paddleocr_hiddenimports = collect_all(
+    "paddleocr"
+)
+
+
+# ============================================================
+# 5. pypdfium2
 # ============================================================
 
 pypdfium2_datas, pypdfium2_binaries, pypdfium2_hiddenimports = collect_all(
@@ -24,7 +53,7 @@ pypdfium2_datas, pypdfium2_binaries, pypdfium2_hiddenimports = collect_all(
 
 
 # ============================================================
-# 3. OpenCV
+# 6. OpenCV
 # ============================================================
 
 opencv_datas, opencv_binaries, opencv_hiddenimports = collect_all(
@@ -33,25 +62,15 @@ opencv_datas, opencv_binaries, opencv_hiddenimports = collect_all(
 
 
 # ============================================================
-# 4. pyclipper
+# 7. pyclipper
 # ============================================================
 
 pyclipper_datas, pyclipper_binaries, pyclipper_hiddenimports = collect_all(
     "pyclipper"
 )
 
-
 # ============================================================
-# 5. Ultralytics
-# ============================================================
-
-ultralytics_datas, ultralytics_binaries, ultralytics_hiddenimports = collect_all(
-    "ultralytics"
-)
-
-
-# ============================================================
-# 6. Other application dependencies
+# 8. Other PaddleX / PaddleOCR dependencies
 # ============================================================
 
 extra_packages = [
@@ -74,11 +93,19 @@ extra_packages = [
     "openpyxl",
     "ftfy",
     "imagesize",
+    "ultralytics",
 ]
+
+# ============================================================
+# 9. Ultralytics
+# ============================================================
+ultralytics_datas, ultralytics_binaries, ultralytics_hiddenimports = collect_all(
+    "ultralytics"
+)
 
 
 # ============================================================
-# 7. Collect extra packages
+# 10. Collect extra packages
 # ============================================================
 
 extra_datas = []
@@ -101,10 +128,17 @@ for package in extra_packages:
 
 
 # ============================================================
-# 8. Distribution metadata
+# 10. Distribution metadata
+#
+# PaddleX sử dụng importlib.metadata / package metadata
+# để kiểm tra dependency ở runtime.
 # ============================================================
 
 metadata_packages = [
+    "paddlepaddle",
+    "paddlex",
+    "paddleocr",
+
     "pypdfium2",
     "opencv-contrib-python",
     "pyclipper",
@@ -150,11 +184,15 @@ for package in metadata_packages:
 
 
 # ============================================================
-# 9. Merge binaries
+# 11. Merge binaries
 # ============================================================
 
 all_binaries = (
     pyzbar_binaries
+
+    + paddle_binaries
+    + paddlex_binaries
+    + paddleocr_binaries
 
     + pypdfium2_binaries
     + opencv_binaries
@@ -166,11 +204,15 @@ all_binaries = (
 
 
 # ============================================================
-# 10. Merge datas
+# 12. Merge datas
 # ============================================================
 
 all_datas = (
-    pypdfium2_datas
+    paddle_datas
+    + paddlex_datas
+    + paddleocr_datas
+
+    + pypdfium2_datas
     + opencv_datas
     + pyclipper_datas
 
@@ -190,19 +232,28 @@ all_datas = (
         ("plugin/WebView", "plugin/WebView"),
 
         # ----------------------------------------------------
-        # Application files
+        # OCR models + OCR code/data
         # ----------------------------------------------------
-        ("backend/crop", "backend/crop"),
+        ("OCR", "OCR"),
+
+        # ----------------------------------------------------
+        # Yolo models
+        # ----------------------------------------------------
+        ("backend/crop", "backend/crop")
     ]
 )
 
 
 # ============================================================
-# 11. Merge hidden imports
+# 13. Merge hidden imports
 # ============================================================
 
 all_hiddenimports = (
-    pypdfium2_hiddenimports
+    paddle_hiddenimports
+    + paddlex_hiddenimports
+    + paddleocr_hiddenimports
+
+    + pypdfium2_hiddenimports
     + opencv_hiddenimports
     + pyclipper_hiddenimports
     + ultralytics_hiddenimports
@@ -212,7 +263,9 @@ all_hiddenimports = (
 
 
 # ============================================================
-# 12. Explicit imports
+# 14. Explicit imports
+#
+# Một số dependency được PaddleX import động.
 # ============================================================
 
 all_hiddenimports += [
@@ -242,11 +295,15 @@ all_hiddenimports += [
     "regex",
 
     "lxml",
+
+    "paddle",
+    "paddleocr",
+    "paddlex",
 ]
 
 
 # ============================================================
-# 13. Analysis
+# 15. Analysis
 # ============================================================
 
 a = Analysis(
@@ -268,15 +325,7 @@ a = Analysis(
 
     runtime_hooks=[],
 
-    excludes=[
-        # ----------------------------------------------------
-        # Explicitly exclude old OCR stack
-        # ----------------------------------------------------
-        "paddle",
-        "paddleocr",
-        "paddlex",
-        "vietocr",
-    ],
+    excludes=[],
 
     noarchive=False,
 
@@ -285,7 +334,7 @@ a = Analysis(
 
 
 # ============================================================
-# 14. PYZ
+# 16. PYZ
 # ============================================================
 
 pyz = PYZ(
@@ -294,7 +343,7 @@ pyz = PYZ(
 
 
 # ============================================================
-# 15. EXE
+# 17. EXE
 # ============================================================
 
 exe = EXE(
@@ -329,13 +378,11 @@ exe = EXE(
     entitlements_file=None,
 
     icon="launcher/icon.ico",
-
-    version="version_info.txt",
 )
 
 
 # ============================================================
-# 16. COLLECT
+# 18. COLLECT
 # ============================================================
 
 coll = COLLECT(

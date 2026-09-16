@@ -1,10 +1,12 @@
 import os
 import sys
 import webbrowser
+from backend.config import open_settings
 
 import pystray
 from PIL import Image
 from pystray import MenuItem
+import asyncio
 
 
 class TrayApp:
@@ -15,10 +17,19 @@ class TrayApp:
         self.ip = "localhost"
 
     def open_admin_ui(self, icon, item):
-        webbrowser.open(f"http://{self.ip}:5173")
+        webbrowser.open(
+            f"http://{self.ip}:5173"
+        )
+
 
     def open_user_ui(self, icon, item):
-        webbrowser.open(f"http://{self.ip}:5174")
+        settings_data = asyncio.run(open_settings())
+
+        self.ui = settings_data.get("settings", {}).get("ui", "desktop")
+
+        webbrowser.open(
+            f"http://{self.ip}:5174/{self.ui}"
+        )
 
     def quit(self, icon, item):
         print("Stopping HUB...")

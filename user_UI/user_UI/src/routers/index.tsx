@@ -6,8 +6,16 @@ export default function Routers() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/scan/:serviceID" element={<ScanPage />} />
+        <Route path="/desktop">
+          <Route index element={<HomePage />} />
+          <Route path="scan/:serviceID" element={<ScanPage />} />
+        </Route>
+        <Route path="/kiosk">
+          {/* Giao diện Kiosk Homepage */}
+          <Route index element={<HomePage />} /> 
+          {/* Giao diện Kiosk Scan */}
+          <Route path="scan/:serviceID" element={<ScanPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   )

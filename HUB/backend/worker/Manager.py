@@ -1,6 +1,6 @@
 import asyncio
 from backend.worker.webViewWorker import WebViewWorker
-from backend.worker.OCRWorker import OCRWorker
+# from backend.worker.OCRWorker import OCRWorker
 from redis.asyncio import Redis
 import multiprocessing
 

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <settings>
 	<mode>basic</mode>
+	<ui>desktop</ui>
 	<server_ip>12.12.12.12</server_ip>
 	<LLM_model>qwen3-vl-2b-instruct</LLM_model>
 	<LLM_gpu_use>1.0</LLM_gpu_use>

@@ -115,7 +115,7 @@ export default function LLMPage() {
                 <section className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center shadow-sm sm:p-12">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-400 text-2xl font-black text-amber-950" aria-hidden="true">!</div>
                     <h2 className="mt-5 text-xl font-bold text-amber-950">Tính năng chỉ dành cho mode server</h2>
-                    <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-amber-800">Hãy chuyển sang chế độ Máy chủ để cấu hình và quản lý mô hình ngôn ngữ.</p>
+                    <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-amber-800">Hãy chuyển sang chế độ server để cấu hình và quản lý mô hình ngôn ngữ.</p>
                 </section>
             </div>
         );
@@ -161,7 +161,13 @@ export default function LLMPage() {
                     <div className="border-b border-slate-100 px-5 py-5 sm:px-7"><h2 className="text-lg font-bold text-slate-950">Trạng thái LM Studio</h2><p className="mt-1 text-sm text-slate-500">Quản lý model đang được nạp trên server.</p></div>
                     <div className="space-y-5 p-5 sm:p-7">
                         <div className={`rounded-xl border p-4 ${serverRunning ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className={`text-sm font-bold ${serverRunning ? "text-emerald-800" : "text-amber-800"}`}><span className="mr-2" aria-hidden="true">●</span>{serverRunning === null ? "Đang kiểm tra..." : serverRunning ? "Server đang hoạt động" : "Server chưa sẵn sàng"}</div></div>
-                        <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Model đã chọn</p><p className="mt-2 break-words text-sm font-bold text-slate-800">{setting.LLM_model || "Chưa chọn model"}</p></div>
+                        <div className={`rounded-xl border p-4 ${serverRunning ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-slate-50"}`}>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Model đang hoạt động</p>
+                            <p className={`mt-2 break-words text-base font-bold ${serverRunning ? "text-cyan-900" : "text-slate-500"}`}>
+                                {serverRunning ? setting.LLM_model || "Chưa chọn model" : "Chưa có model hoạt động"}
+                            </p>
+                            {serverRunning && <p className="mt-1 text-xs text-cyan-700">Đang được LM Studio sử dụng</p>}
+                        </div>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"><button type="button" disabled={modelAction !== null || !serverRunning} onClick={() => void handleModelAction("load")} className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{modelAction === "load" ? "Đang load..." : "Load model"}</button><button type="button" disabled={modelAction !== null || !serverRunning} onClick={() => void handleModelAction("unload")} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400">{modelAction === "unload" ? "Đang unload..." : "Unload model"}</button></div>
                         <button type="button" onClick={() => void readServerStatus()} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-cyan-400 hover:text-cyan-700">↻ Kiểm tra lại trạng thái</button>
                     </div>

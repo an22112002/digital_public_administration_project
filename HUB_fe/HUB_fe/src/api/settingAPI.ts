@@ -14,6 +14,10 @@ export interface ModeResponse {
     server_ip: string | null;
 }
 
+export interface UIResponse {
+    ui: "desktop" | "kiosk";
+}
+
 interface ProvinceOption {
     name: string;
     id: string;
@@ -72,6 +76,11 @@ export async function listCommune(id: string) {
     return response.data as CommuneListResponse;
 }
 
+export async function getSelfIP() {
+    const response = await HUB_api.get("/settings/self-ip");
+    return response.data as { self_ip: string };
+}
+
 export async function saveNewPosition(provinceID: string, communeID: string) {
     const response = await HUB_api.put(`/settings/position`, { provinceID: provinceID, communeID: communeID });
     return response.data as UpdateResponse;
@@ -84,5 +93,15 @@ export async function getMode() {
 
 export async function saveMode(data: ModeResponse) {
     const response = await HUB_api.put("/settings/mode", data);
+    return response.data as UpdateResponse;
+}
+
+export async function getUI() {
+    const response = await HUB_api.get("/settings/ui-user");
+    return response.data as UIResponse;
+}
+
+export async function saveUI(ui: UIResponse["ui"]) {
+    const response = await HUB_api.put("/settings/ui-user", { ui: ui });
     return response.data as UpdateResponse;
 }

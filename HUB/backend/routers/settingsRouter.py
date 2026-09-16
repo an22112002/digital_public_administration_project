@@ -1,9 +1,17 @@
 from fastapi import APIRouter
-from backend.services.settingsServices import getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel
-from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest
+from backend.services.settingsServices import get_ui_user, set_ui_user, getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel
+from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest, SetUIUserRequest
 
 settings_router = APIRouter(prefix="/settings", tags=["settings"])
 
+# ui người dùng
+@settings_router.get("/ui-user")
+async def get_ui():
+    return await get_ui_user()
+
+@settings_router.put("/ui-user")
+async def set_ui(request: SetUIUserRequest):
+    return await set_ui_user(request.ui)
 # naps2 settings endpoints
 @settings_router.get("/naps2-path")
 async def get_naps2_path():

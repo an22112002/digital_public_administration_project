@@ -2,9 +2,25 @@ from backend.config import open_settings, save_settings
 from backend.crud.settingsCrud import get_province_list, get_commune_list, get_position
 from backend.log.main import log_exception
 from backend.models.settingsModels import ModeSaveRequest
-from backend.services.LLMServices import checkLMStudioServerRunning, loadLocalLMStudioModel, unloadLocalLMStudioModel, runPromptInLMStudio
+from backend.services.LLMServices import getLMStudioModels, checkLMStudioServerRunning, loadLocalLMStudioModel, unloadLocalLMStudioModel, runPromptInLMStudio
 import socket
 
+# UI người dùng
+async def get_ui_user():
+    settings_data = await open_settings()
+    ui_user = settings_data.get("settings", {}).get("ui", "desktop")
+    return {"ui": ui_user}
+
+async def set_ui_user(ui: str):
+    try:
+        settings_data = await open_settings()
+        settings_data["settings"]["ui"] = ui
+        await save_settings(settings_data)
+        return {"success": True, "message": f"Giao diện người dùng đã được lưu thành công. {ui}"}
+    except Exception as e:
+        log_exception(e, "HUB")
+        print(f"[Error] Failed to set UI user: {e}")
+        return {"success": False, "message": "Lỗi khi lưu giao diện người dùng.", "error": str(e)}
 # NAPS2 settings functions
 async def getNAPS2Path() -> str:
     settings_data = await open_settings()
@@ -81,11 +97,7 @@ async def savePosition(province_id: str, commune_id: str):
 # LLM settings functions
 async def getLLMModels() -> list:
     # Trả về danh sách các mô hình LLM có sẵn
-    return [
-        "qwen3-vl-2b-instruct",
-        "qwen3-vl-4b-instruct",
-        "qwen3-vl-8b-instruct",
-    ]
+    return await getLMStudioModels()
 
 async def getLLMSetting() -> dict:
     settings_data = await open_settings()
@@ -123,19 +135,11 @@ async def getLLMServerStatus() -> bool:
 
 async def unloadLLMModel() -> dict:
     await unloadLocalLMStudioModel()
-    try:
-        _ = await runPromptInLMStudio(prompt="hello", images=[], server_ip="localhost")
-        return {"success": False, "message": "Mô hình LLM vẫn đang chạy."}
-    except Exception as e:
-        return {"success": True, "message": "Đã unload mô hình LLM thành công."}
+    return {"success": True, "message": "Đã unload mô hình LLM thành công."}
 
 async def loadLLMModel() -> dict:
     await loadLocalLMStudioModel()
-    try:
-        _ = await runPromptInLMStudio(prompt="hello", images=[], server_ip="localhost")
-        return {"success": True, "message": "Đã load mô hình LLM thành công."}
-    except Exception as e:
-        return {"success": False, "message": "Mô hình LLM không phản hồi.", "error": str(e)}
+    return {"success": True, "message": "Đã load mô hình LLM thành công."}
 
 # mode settings functions
 def getSelfIP() -> str:

@@ -1,7 +1,6 @@
 from OCR.CCCD import CCCD_LLM
 from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
 from redis.asyncio import Redis
-from uuid import uuid4
 
 redis_client = Redis(
     host=REDIS_HOST, 

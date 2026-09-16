@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { getTitle, saveTitle, getProvince, getCommune, listProvince, listCommune, saveNewPosition } from "../../api/settingAPI";
-import type { ProvinceListResponse, CommuneListResponse } from "../../api/settingAPI";
+import { getTitle, saveTitle, getProvince, getCommune, listProvince, listCommune, getSelfIP, saveNewPosition, getUI, saveUI } from "../../api/settingAPI";
+import type { ProvinceListResponse, CommuneListResponse, UIResponse } from "../../api/settingAPI";
 
 export default function InfoPage() {
+    const [machineIp, setMachineIp] = useState("");
     const [title, setTitle] = useState("");
     const [changedTitle, setChangedTitle] = useState(false);
     const [province, setProvince] = useState("");
@@ -15,10 +16,17 @@ export default function InfoPage() {
     const [provinceError, setProvinceError] = useState("");
     const [communeError, setCommuneError] = useState("");
     const [isLoadingCommunes, setIsLoadingCommunes] = useState(false);
+    const [ui, setUI] = useState<UIResponse["ui"]>("desktop");
+    const [isSavingUI, setIsSavingUI] = useState(false);
 
     const fetchTitle = async () => {
         const response = await getTitle();
         setTitle(response.title);
+    }
+
+    const fetchSelfIP = async () => {
+        const response = await getSelfIP();
+        setMachineIp(response.self_ip);
     }
 
     const load = async () => {
@@ -49,8 +57,24 @@ export default function InfoPage() {
 
     useEffect(() => {
         fetchTitle();
+        fetchSelfIP();
         load();
+        getUI().then((response) => setUI(response.ui)).catch(() => undefined);
     }, []);
+
+    const handleUIChange = async (nextUI: UIResponse["ui"]) => {
+        if (nextUI === ui) return;
+
+        setIsSavingUI(true);
+        try {
+            const response = await saveUI(nextUI);
+            if (response.success) {
+                setUI(nextUI);
+            }
+        } finally {
+            setIsSavingUI(false);
+        }
+    };
 
     const handleTitleChange = async () => {
         const response = await saveTitle(title);
@@ -175,6 +199,39 @@ export default function InfoPage() {
                 <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                     <p className="text-xs leading-5 text-slate-500">Chỉ gửi API khi cả tỉnh/thành phố và xã/phường đều khớp danh sách.</p>
                     {changedPosition ? <button type="button" className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400" onClick={async () => { await handlePositionChange(); }}>Lưu vị trí</button> : <button type="button" className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-cyan-400 hover:text-cyan-700" onClick={() => setChangedPosition(true)}>Sửa vị trí cơ quan</button>}
+                </div>
+            </section>
+
+            <header>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-950">Thông tin máy</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Cập nhật giao diện hiển thị của người dùng trên thiết bị này.</p>
+            </header>
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-5 px-5 py-5">
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold text-slate-600">IP máy</p>
+                        <p className="mt-1 font-mono text-lg font-bold text-cyan-700">{machineIp}</p>
+                        <button type="button" className="mt-2 w-[20%] rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400" onClick={() => { navigator.clipboard.writeText(machineIp);}}>Sao chép địa chỉ IP</button>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-5 border-t border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold text-slate-600">Giao diện</p>
+                        <div className="mt-2 inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Chọn giao diện">
+                            {(["desktop", "kiosk"] as const).map((option) => (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    disabled={isSavingUI}
+                                    onClick={() => void handleUIChange(option)}
+                                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${ui === option ? "bg-cyan-500 text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                >
+                                    {option === "desktop" ? "Desktop" : "Kiosk"}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>

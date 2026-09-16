@@ -19,6 +19,7 @@ REDIS_PORT = 6380
 default_settings = {
     "settings": {
         "mode": "basic",
+        "ui": "desktop", # desktop, kiosk
         "server_ip": "",
         "title": "Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công",
         "naps2_path": "C:\\Program Files\\NAPS2\\NAPS2.Console.exe",
