@@ -21,11 +21,13 @@ default_settings = {
         "mode": "basic",
         "server_ip": "",
         "title": "Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công",
-        "naps2_path": "C:\\Program Files (x86)\\NAPS2\\NAPS2.Console.exe",
+        "naps2_path": "C:\\Program Files\\NAPS2\\NAPS2.Console.exe",
         "province": "Thành phố Hà Nội",
         "commune": "Phường Ba Đình",
         "scanner_save_path": r"D:\scanned_files",
         "LLM_model": "qwen3-vl-2b-instruct",
+        "LLM_gpu_use": 1.0,
+        "LLM_context_length": 8192
     }
 }
 # lưu trữ các cài đặt mặc định của ứng dụng, nếu chưa có thì tạo mới

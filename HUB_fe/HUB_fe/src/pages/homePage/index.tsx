@@ -1,15 +1,31 @@
 import { Outlet } from "react-router-dom";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getMode } from "../../api/settingAPI";
 
 export default function Homepage() {
     const navigate = useNavigate();
     const location = useLocation();
+    const [isServerMode, setIsServerMode] = useState(false);
+
+    useEffect(() => {
+        const loadMode = async () => {
+            try {
+                const mode = await getMode();
+                setIsServerMode(mode.mode === "server");
+            } catch {
+                setIsServerMode(false);
+            }
+        };
+
+        void loadMode();
+    }, [location.pathname]);
 
     const navigationItems = [
-        { label: "Thông tin", path: "/info" },
-        { label: "Chế độ hoạt động", path: "/mode" },
-        { label: "Dịch vụ", path: "/service" },
-        { label: "LLM", path: "/llm" },
+        { label: "Thông tin", path: "/info", icon: "⌂" },
+        { label: "Chế độ hoạt động", path: "/mode", icon: "◈" },
+        { label: "Dịch vụ", path: "/service", icon: "⚙" },
+        { label: "LLM", path: "/llm", icon: "✦" },
     ];
 
     return (
@@ -25,13 +41,13 @@ export default function Homepage() {
                 </div>
                 <div className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Cài đặt</div>
                 <ul className="space-y-1">
-                    {navigationItems.map((item) => (
+                    {navigationItems.filter((item) => item.path !== "/llm" || isServerMode).map((item) => (
                         <li key={item.path}>
                             <button
                                 className={`w-full rounded-xl px-3 py-3 text-left text-sm font-medium transition ${location.pathname === item.path ? "bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/30" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}
                                 onClick={() => navigate(item.path)}
                             >
-                                {item.label}
+                                <span className="mr-3 inline-flex w-5 justify-center text-base" aria-hidden="true">{item.icon}</span>{item.label}
                             </button>
                         </li>
                     ))}
@@ -43,7 +59,7 @@ export default function Homepage() {
                             className={`w-full rounded-xl px-3 py-3 text-left text-sm font-medium transition ${location.pathname === "/scanner" ? "bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-950/30" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}
                             onClick={() => navigate("/scanner")}
                         >
-                            Máy scan
+                            <span className="mr-3 inline-flex w-5 justify-center text-base" aria-hidden="true">▤</span>Máy scan
                         </button>
                     </li>
                 </ul>

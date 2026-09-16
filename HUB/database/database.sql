@@ -38,7 +38,7 @@ CREATE TABLE `scan_requirements`(
     `serviceID` BIGINT NOT NULL,
     `code` CHAR(50) NOT NULL,
     `title` VARCHAR(100) NOT NULL,
-    `description` TEXT NOT NULL,
+    `description` TEXT NULL,
     `required` BOOLEAN NOT NULL DEFAULT 0,
     `ocr_enabled` BOOLEAN NOT NULL DEFAULT 0
 );

@@ -37,29 +37,28 @@
         // =========================
         // Hàm style chung cho button
         // =========================
-        const styleButton = (button) => {
+        const styleButton = (button, tooltip, bg_color, text_color, font_size) => {
             Object.assign(button.style, {
                 border: "1px solid #d9d9d9",
-                backgroundColor: "#fff",
-                color: "#333",
+                backgroundColor: bg_color || "#fff",
+                color:  text_color || "#333",
                 padding: "6px 12px",
                 borderRadius: "4px",
                 cursor: "pointer",
-                fontSize: "14px",
+                fontSize: font_size || "14px",
                 transition: "all 0.2s ease",
                 outline: "none"
             });
+            button.dataset.tooltip = tooltip;
 
             button.onmouseenter = () => {
-                button.style.backgroundColor = "#f0f0f0";
+                button.style.backgroundColor = bg_color || "#f0f0f0";
                 button.style.borderColor = "#999";
                 button.style.transform = "translateY(-1px)";
                 button.style.boxShadow = "0 2px 5px rgba(0,0,0,0.15)";
             };
 
             button.onmouseleave = () => {
-                button.style.backgroundColor = "#fff";
-                button.style.borderColor = "#d9d9d9";
                 button.style.transform = "translateY(0)";
                 button.style.boxShadow = "none";
             };
@@ -72,14 +71,38 @@
                 button.style.transform = "translateY(-1px)";
             };
         };
+        // =========================
+        // Back
+        // =========================
+        const btnBack = document.createElement("button");
+        btnBack.textContent = "⟵"; // "Back"
+
+        styleButton(btnBack, "Trang trước", "#fff", "#333", "16px");
+
+        btnBack.onclick = () => {
+            window.history.back();
+        };
+
+        // =========================
+        // Forward
+        // =========================
+        const btnForward = document.createElement("button");
+        btnForward.textContent = "⟶"; // "Forward"
+
+        styleButton(btnForward, "Trang tiếp theo", "#fff", "#333", "16px");
+
+        btnForward.onclick = () => {
+            window.history.forward();
+        };
 
         // =========================
         // Reload
         // =========================
         const btnReload = document.createElement("button");
-        btnReload.textContent = "Tải lại"; // "Reload" in Vietnamese
+        btnReload.dataset.tooltip = "Làm mới trang"; // Thêm tooltip cho nút Reload
+        btnReload.textContent = "↻"; // "Reload"
 
-        styleButton(btnReload);
+        styleButton(btnReload, "Làm mới trang", "#fff", "#333", "16px");
 
         btnReload.onclick = () => {
             window.location.reload();
@@ -89,14 +112,16 @@
         // Close
         // =========================
         const btnClose = document.createElement("button");
-        btnClose.textContent = "Đóng"; // "Đóng" in Vietnamese
+        btnClose.textContent = "Dừng nộp hồ sơ";
 
-        styleButton(btnClose);
+        styleButton(btnClose, "Đóng cửa sổ", "#ff4d4f", "#fff");
 
         btnClose.onclick = () => {
             window.pywebview.api.destroy();
         };
 
+        tools.appendChild(btnBack);
+        tools.appendChild(btnForward);
         tools.appendChild(btnReload);
         tools.appendChild(btnClose);
 

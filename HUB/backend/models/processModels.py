@@ -26,6 +26,7 @@ class ImportFileRequest(BaseModel):
 
 class CropImageRequest(BaseModel):
     image: str
+    position: list[int] | None  # [x1, y1, x2, y2]
 
 class WebSocketRequest(BaseModel):
     type: Literal["start_scan", "start_webview", "import_file", "crop_image", "close"]

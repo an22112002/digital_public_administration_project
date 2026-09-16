@@ -4,6 +4,7 @@ from ultralytics import YOLO
 from pathlib import Path
 from PIL import Image
 import pymupdf
+import time
 
 # vị trí file main
 PATH_FOLDER_MODELS = Path(__file__).parent / "models" / "index-card-detector.pt"
@@ -248,6 +249,87 @@ async def detect_and_crop_image(image_path: str, confidence_min=0.7):
 
     return cropped_paths
 
+async def crop_with_position(image_path: str, position: list[int]):
+    """
+    Crop ảnh theo tọa độ đã biết.
+
+    image_path:
+        Đường dẫn đến ảnh đầu vào.
+    position:
+        Tọa độ crop [x1, y1, x2, y2]
+    """
+    x1, y1, x2, y2 = position
+
+    # image_path có dạng ".../page_4.jpg"
+    # file crop ra sẽ có dạng ".../page_4_crop.jpg"
+    output_folder = Path(image_path).parent
+    crop_path = (
+        output_folder
+        / f"{Path(image_path).stem}_crop_{int(time.time())}.jpg"
+    )
+
+    # ==========================================
+    # 1. Đọc ảnh
+    # ==========================================
+    image = cv2.imread(image_path)
+
+    # ==========================================
+    # 2. Crop card
+    # ==========================================
+    card = image[
+        y1:y2,
+        x1:x2
+    ]
+
+    crop_rgb = cv2.cvtColor(
+        card,
+        cv2.COLOR_BGR2RGB
+    )
+
+    pil_image = Image.fromarray(
+        crop_rgb
+    )
+
+    pil_image.save(
+        crop_path,
+        dpi=(300, 300),
+        quality=95
+    )
+
+    return str(crop_path)
+
+async def extendImage(ex_x, ex_y, image_path: str):
+    """
+    Mở rộng ảnh theo chiều dài và chiều rộng. Phần mở rộng là các pixel trắng (255,255,255). Rồi lưu lại ảnh mới và trả về đường dẫn mới.
+    ex_x: % mở rộng theo chiều dài (x). 0.12 = 12% mở rộng theo chiều dài
+    ex_y: % mở rộng theo chiều rộng (y)
+    image_path: Đường dẫn đến ảnh đầu vào.
+    """
+    # Đọc ảnh
+    image = cv2.imread(image_path)
+
+    # Tính toán kích thước mới
+    height, width = image.shape[:2]
+    new_height = int(height * (1 + ex_y))
+    new_width = int(width * (1 + ex_x))
+
+    # Tạo ảnh mới với kích thước mới
+    extended_image = np.zeros((new_height, new_width, 3), dtype=np.uint8)
+    extended_image[:] = [255, 255, 255]  # Màu trắng
+
+    # Đặt ảnh gốc vào giữa ảnh mới
+    y_offset = (new_height - height) // 2
+    x_offset = (new_width - width) // 2
+    extended_image[y_offset:y_offset + height, x_offset:x_offset + width] = image
+
+    # Lưu ảnh mới
+    # file cũ lưu ở ".../test/images/page_1.jpg" thì file mới sẽ lưu ở ".../test/extended/page_1.jpg"
+    output_path = Path(image_path).parent.parent / "extended" / Path(image_path).name
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(output_path), extended_image)
+
+    return str(output_path)
+
 async def splitPDF(
     pdf_path: str,
     begin_int: int,
@@ -377,7 +459,12 @@ if __name__ == "__main__":
     #     splitPDF(pdf_path, 1, output_folder)
     # )
 
-    image_path = r"C:\Users\ADMIN\Pictures\Screenshot_6.jpg"
+    # image_path = r"C:\Users\ADMIN\Pictures\Screenshot_6.jpg"
+    # asyncio.run(
+    #     detect_and_crop_image(image_path)
+    # )
+
+    image_path = r"D:\scan_files\patch_1788410810\images\page_1.jpg"
     asyncio.run(
-        detect_and_crop_image(image_path)
+        extendImage(0.15, 0.25, image_path)
     )

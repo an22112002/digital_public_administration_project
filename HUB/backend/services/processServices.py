@@ -12,7 +12,7 @@ from OCR.main import processOCR2
 from backend.crud.processCrud import get_service_by_id, get_documents_to_scan, get_service_documents
 from backend.models.processModels import UserTask, StartScanRequest, StartWebViewRequest, WebSocketRequest, CropImageRequest
 from backend.config import open_settings
-from backend.crop.main import splitPDF, detect_and_crop_image
+from backend.crop.main import splitPDF, detect_and_crop_image, extendImage, crop_with_position
 
 # from PyPDF2 import PdfReader
 # from PIL import Image
@@ -135,20 +135,36 @@ async def scanActivate(data: StartScanRequest, user_task: UserTask):
 
 # Xử lý 1 file cụ thể được người dùng yêu cầu crop, nhận vào đường dẫn file ảnh, trả về đường dẫn các file ảnh đã crop
 async def processCropImage(request: CropImageRequest, user_task: UserTask):
-    try:
-        cropped_paths = await detect_and_crop_image(request.image)
-        await user_task.websocket.send_json({
-            "type": "crop_status",
-            "status": "success",
-            "cropped_images": cropped_paths
-        })
-    except Exception as e:
-        log_exception(e, "HUB")
-        await user_task.websocket.send_json({
-            "type": "crop_status",
-            "status": "error",
-            "message": str(e)
-        })
+    if request.position is not None and len(request.position) == 4:
+        try:
+            cropped_paths = await crop_with_position(request.image, request.position)
+            await user_task.websocket.send_json({
+                "type": "crop_status",
+                "status": "success",
+                "cropped_images": cropped_paths
+            })
+        except Exception as e:
+            log_exception(e, "HUB")
+            await user_task.websocket.send_json({
+                "type": "crop_status",
+                "status": "error",
+                "message": str(e)
+            })
+    else:
+        try:
+            cropped_paths = await detect_and_crop_image(request.image)
+            await user_task.websocket.send_json({
+                "type": "crop_status",
+                "status": "success",
+                "cropped_images": cropped_paths
+            })
+        except Exception as e:
+            log_exception(e, "HUB")
+            await user_task.websocket.send_json({
+                "type": "crop_status",
+                "status": "error",
+                "message": str(e)
+            })
 
 # Xử lý việc nhập file pdf từ client, chia nó ra thành các trang ảnh và gửi về client
 async def processImportFile(data, user_task: UserTask):
@@ -294,7 +310,7 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                 "required": False,
                 "files": prov_doc.files,
                 "ocr_enabled": False,
-                "code": ""
+                "code": await codeForAddDocument(str(prov_doc.srID))
             })
     # Kiểm tra các tài liệu required có len(files) > 0 hay không, nếu không thì gửi thông báo lỗi
     for doc in documents_data:
@@ -305,6 +321,10 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                 "message": f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp."
             })
             raise ValueError(f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp.")
+    # mở rộng ảnh với các tài liệu có yêu cầu
+    for doc in documents_data:
+        await autoExtendImage(doc)
+
     # tạo các file PDF từ các file JPG ứng với mỗi tài liệu
     for doc in documents_data:
         if len(doc['files']) > 0:
@@ -505,6 +525,33 @@ async def merge_images_to_pdf(images: list[str], output_pdf_path: str):
     pdf.save(output_pdf_path)
     pdf.close()
 
+# mở rộng ảnh theo chiều dài và chiều rộng, phần mở rộng là các pixel trắng (255,255,255), rồi lưu lại ảnh mới và trả về đường dẫn mới
+async def autoExtendImage(document: list[dict]):
+    # kiểm tra xem tài liệu có cần mở rộng hay không, nếu có thì mở rộng ảnh theo các thông số đã định nghĩa sẵn
+    filter = [
+        {"code": "cccd", "ex_x": 0.15, "ex_y": 0.25},
+        {"code": "gplx", "ex_x": 0.15, "ex_y": 0.25},
+        {"code": "bhyt", "ex_x": 0.15, "ex_y": 0.25},
+    ]
+    is_extendable = False
+    ex_x = 0
+    ex_y = 0
+    # kiểm tra xem có tài liệu nào cần mở rộng hay không
+    for f in filter:
+        if document["code"].startswith(f["code"]):
+            is_extendable = True
+            ex_x = f["ex_x"]
+            ex_y = f["ex_y"]
+            break
+    # nếu có tài liệu cần mở rộng thì thực hiện mở rộng ảnh
+    if is_extendable:
+        if len(document['files']) > 0:
+            extended_files = []
+            for image_path in document['files']:
+                extended_image_path = await extendImage(ex_x, ex_y, image_path)
+                extended_files.append(extended_image_path)
+            document['files'] = extended_files
+
 # chia PDF thành các trang riêng lẻ, mỗi trang là một file JPG mới
 # crop các ảnh tài liệu nhỏ về kích thước của chúng
 # async def splitPDF(pdf_path: str, begin_int: int, output_folder: str):
@@ -565,6 +612,30 @@ async def get_images_from_folder(timestamp: int, folder_path: str):
 #             raise ValueError(f"Không đọc được thông tin từ QR của: {code}")
 #     # print(f"OCR final results: {ocr_final_results}")
 #     return ocr_final_results
+
+async def codeForAddDocument(srID: str):
+    """
+    Hàm chuẩn hóa mã code cho các tài liệu bổ sung (ADD).
+    :param srID: str - ID của yêu cầu quét, nếu là "ADD:<tên tài liệu>" thì nó là tài liệu bổ sung
+    :return: str - mã code chuẩn hóa cho tài liệu bổ sung."""
+    if not srID.startswith("ADD:"):
+        raise ValueError(f"srID không hợp lệ: {srID}")
+    raw_title = srID[4:]
+    parts = raw_title.rsplit(":", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        title = parts[0].strip()
+    else:
+        title = raw_title.strip()
+    # chuẩn hóa title thành code, ví dụ: "Giấy khai sinh" -> "giay_khai_sinh"
+    s = remove_accents(title).lower().replace(" ", "_")
+    code = ""
+    if s in ("can_cuoc_cong_dan", "cccd", "can_cuoc", "chung_minh_nhan_dan", "ho_chieu"):
+        code = "cccd"
+    if s in ("giay_phep_lai_xe", "gplx", "bang_lai_xe"):
+        code = "gplx"
+    if s in ("giay_bao_hiem_y_te", "bhyt", "bao_hiem_y_te"):
+        code = "bhyt"
+    return code
 
 async def OCRDocuments2(ocr_data: list[dict], server_ip: str):
     """

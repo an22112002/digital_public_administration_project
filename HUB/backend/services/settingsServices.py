@@ -2,6 +2,7 @@ from backend.config import open_settings, save_settings
 from backend.crud.settingsCrud import get_province_list, get_commune_list, get_position
 from backend.log.main import log_exception
 from backend.models.settingsModels import ModeSaveRequest
+from backend.services.LLMServices import checkLMStudioServerRunning, loadLocalLMStudioModel, unloadLocalLMStudioModel, runPromptInLMStudio
 import socket
 
 # NAPS2 settings functions
@@ -78,6 +79,63 @@ async def savePosition(province_id: str, commune_id: str):
         return {"success": False, "message": "Lỗi khi lưu vị trí.", "error": str(e)}
 
 # LLM settings functions
+async def getLLMModels() -> list:
+    # Trả về danh sách các mô hình LLM có sẵn
+    return [
+        "qwen3-vl-2b-instruct",
+        "qwen3-vl-4b-instruct",
+        "qwen3-vl-8b-instruct",
+    ]
+
+async def getLLMSetting() -> dict:
+    settings_data = await open_settings()
+    llm_model = settings_data.get("settings").get("LLM_model", "Unknown")
+    llm_gpu_use = settings_data.get("settings").get("LLM_gpu_use", 0.0)
+    llm_context_length = settings_data.get("settings").get("LLM_context_length", 8192)
+    return {
+        "LLM_model": llm_model,
+        "LLM_gpu_use": llm_gpu_use,
+        "LLM_context_length": llm_context_length
+    }
+
+async def setLLMSetting(model: str, gpu_use: float, context_length: int) -> bool:
+    try:
+        if gpu_use < 0.0 or gpu_use > 1.0:
+            raise ValueError("Giá trị GPU use phải nằm trong khoảng từ 0.0 đến 1.0.")
+        if context_length <= 0:
+            raise ValueError("Chiều dài ngữ cảnh phải là một số dương.")
+        settings_data = await open_settings()
+        settings_data["settings"]["LLM_model"] = model
+        settings_data["settings"]["LLM_gpu_use"] = gpu_use
+        settings_data["settings"]["LLM_context_length"] = context_length
+        await save_settings(settings_data)
+        return {"success": True, "message": "Đã lưu cài đặt LLM thành công."}
+    except Exception as e:
+        log_exception(e, "HUB")
+        print(f"[Error] Failed to set LLM settings: {e}")
+        return {"success": False, "message": "Lỗi khi lưu cài đặt LLM.", "error": str(e)}
+
+async def getLLMServerStatus() -> bool:
+    # Kiểm tra trạng thái của server LLM Studio
+    # chỉ hoạt động khi chế độ là "server" nên server_ip = "localhost"
+    is_running = await checkLMStudioServerRunning("localhost")
+    return {"state": is_running}
+
+async def unloadLLMModel() -> dict:
+    await unloadLocalLMStudioModel()
+    try:
+        _ = await runPromptInLMStudio(prompt="hello", images=[], server_ip="localhost")
+        return {"success": False, "message": "Mô hình LLM vẫn đang chạy."}
+    except Exception as e:
+        return {"success": True, "message": "Đã unload mô hình LLM thành công."}
+
+async def loadLLMModel() -> dict:
+    await loadLocalLMStudioModel()
+    try:
+        _ = await runPromptInLMStudio(prompt="hello", images=[], server_ip="localhost")
+        return {"success": True, "message": "Đã load mô hình LLM thành công."}
+    except Exception as e:
+        return {"success": False, "message": "Mô hình LLM không phản hồi.", "error": str(e)}
 
 # mode settings functions
 def getSelfIP() -> str:

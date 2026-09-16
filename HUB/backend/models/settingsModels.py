@@ -14,3 +14,8 @@ class SetPositionRequest(BaseModel):
 class ModeSaveRequest(BaseModel):
     mode: Literal["basic", "server", "client"]
     server_ip: str | None = None
+
+class SetLLMSettingRequest(BaseModel):
+    model: str
+    gpu_use: float
+    context_length: int

@@ -77,8 +77,9 @@ async def insertHusbandInfo(personal_data: list[dict]):
         ("date", personal_data["issue_date"]),
         ("tab", 2),
         ("text", personal_data["issue_place"]),
-        ("tab", 2),
+        ("tab", 1),
         ("checkbox", 1),
+        ("tab", 1),
         ("select", "Việt Nam"),
         ("text", personal_data["address"]),
     ]

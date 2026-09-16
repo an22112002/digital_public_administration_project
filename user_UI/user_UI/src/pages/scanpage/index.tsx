@@ -10,7 +10,7 @@ import {
   ScanOutlined,
   ArrowRightOutlined,
 } from "@ant-design/icons";
-import { websocketUrl } from '../../api/base';
+import { backendUrl, websocketUrl } from '../../api/base';
 import AddDocumentModal from '../../components/scanpage/AddDocumentModal';
 import DocumentList from '../../components/scanpage/DocumentList';
 import PreviewModal from '../../components/scanpage/PreviewModal';
@@ -149,8 +149,9 @@ export default function ScanPage() {
         return;
       }
 
-      const croppedImages: ScanFile[] = (data['cropped_images'] ?? [])
-        .map((imagePath: string) => createScanFileFromPath(imagePath))
+      const croppedImagePaths = normalizeCroppedImagePaths(data);
+      const croppedImages: ScanFile[] = croppedImagePaths
+        .map(imagePath => createScanFileFromPath(imagePath))
         .filter((file: ScanFile | null): file is ScanFile => file !== null);
       if (croppedImages.length > 0) {
         setScannedFiles(previousFiles => {
@@ -302,7 +303,10 @@ export default function ScanPage() {
     setPreviewZoom(1);
   };
 
-  const handleCropFile = (file: ScanFile) => {
+  const handleCropFile = (
+    file: ScanFile,
+    position?: [number, number, number, number]
+  ) => {
     const ws = websocket.current;
 
     if (ws?.readyState !== WebSocket.OPEN) {
@@ -315,6 +319,7 @@ export default function ScanPage() {
       type: 'crop_image',
       request: {
         image: file.url,
+        position: position ?? null,
       },
     }));
   };
@@ -925,10 +930,20 @@ function getFileColorFromIndex(
 function createScanFileFromPath(
   imagePath: string
 ): ScanFile | null {
-  const normalizedPath = imagePath.replace(/\\/g, '/');
+  const normalizedPath = imagePath
+    .replace(/\\/g, '/')
+    .replace(backendUrl, '');
   const match = normalizedPath.match(/\/patch_([^/]+)\/images\/([^/]+)$/);
 
   if (!match) {
+    const scannedFileIndex = normalizedPath.indexOf('/scanned-files/');
+    if (scannedFileIndex >= 0) {
+      return {
+        url: imagePath,
+        link: normalizedPath.slice(scannedFileIndex),
+      };
+    }
+
     console.error('Đường dẫn ảnh crop không hợp lệ:', imagePath);
     return null;
   }
@@ -937,4 +952,30 @@ function createScanFileFromPath(
     url: imagePath,
     link: `/scanned-files/patch_${match[1]}/images/${match[2]}`,
   };
+}
+
+function normalizeCroppedImagePaths(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(item => normalizeCroppedImagePaths(item));
+  }
+
+  if (typeof value === 'string') {
+    return [value];
+  }
+
+  if (value && typeof value === 'object') {
+    const response = value as Record<string, unknown>;
+    const nestedImages =
+      response['cropped_images'] ??
+      response['cropped_image'] ??
+      response['images'] ??
+      response['image'] ??
+      response['path'] ??
+      response['url'] ??
+      response['result'] ??
+      response['data'];
+    return normalizeCroppedImagePaths(nestedImages);
+  }
+
+  return [];
 }

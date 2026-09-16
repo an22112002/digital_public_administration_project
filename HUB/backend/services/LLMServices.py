@@ -26,8 +26,10 @@ async def loadLocalLMStudioModel():
     try:
         settings = await open_settings()
         llm_model = settings["settings"].get("LLM_model", "qwen3-vl-2b-instruct")
+        gpu_use = settings["settings"].get("LLM_gpu_use", 1.0)
+        context_length = settings["settings"].get("LLM_context_length", 8192)
         subprocess.run(
-            ["lms", "load", llm_model, "--gpu=1.0"],
+            ["lms", "load", llm_model, f"--gpu={gpu_use}", f"--context-length={context_length}"],
             check=True
         )
     except subprocess.CalledProcessError as e:
@@ -49,7 +51,7 @@ async def unloadLocalLMStudioModel():
         print(f"[LM Studio] Error occurred while unloading model: {e}")
         raise
 
-async def runPromptInLMStudio(prompt: str, images: str, server_ip: str) -> str:
+async def runPromptInLMStudio(prompt: str, images: list, server_ip: str) -> str:
     """
     Gửi prompt đến LM Studio server và nhận phản hồi.
     """

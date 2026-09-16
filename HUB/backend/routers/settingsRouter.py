@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from backend.services.settingsServices import getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP
-from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest
+from backend.services.settingsServices import getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel
+from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest
 
 settings_router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -61,7 +61,36 @@ async def set_position(request: SetPositionRequest):
     return result
 
 # LLM settings endpoints
+@settings_router.get("/llm-models")
+async def get_llm_models():
+    return await getLLMModels()
 
+@settings_router.get("/llm")
+async def get_llm_setting():
+    return await getLLMSetting()
+
+@settings_router.get("/llm-server-status")
+async def get_llm_status():
+    return await getLLMServerStatus()
+
+@settings_router.put("/llm-update")
+async def set_llm_setting(request: SetLLMSettingRequest):
+    result = await setLLMSetting(
+        model=request.model,
+        gpu_use=request.gpu_use,
+        context_length=request.context_length
+    )
+    return result
+
+@settings_router.post("/llm-load")
+async def load_llm_model():
+    result = await loadLLMModel()
+    return result
+
+@settings_router.post("/llm-unload")
+async def unload_llm_model():
+    result = await unloadLLMModel()
+    return result
 
 # mode settings endpoints
 @settings_router.get("/server-ip")
