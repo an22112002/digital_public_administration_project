@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '../../header/header';
+import aiBootsImage from '../../assets/ai boots.png';
 import { useParams } from 'react-router-dom';
 import { getScannerOptions } from '../../api/scannerAPI';
 import type { ScannerOption } from '../../api/scannerAPI';
@@ -17,7 +18,7 @@ import PreviewModal from '../../components/scanpage/PreviewModal';
 import ScannedFiles from '../../components/scanpage/ScannedFiles';
 import type { DocumentItem, ScanFile, SendFile } from '../../components/scanpage/types';
 
-export default function ScanPage() {
+export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const websocket = useRef<WebSocket | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
@@ -685,6 +686,12 @@ export default function ScanPage() {
       <div className="mx-auto max-w-6xl">
 
         <Header />
+
+        {kiosk && (
+          <section className="kiots-scan-ai" aria-label="Trợ lý AI hỗ trợ dịch vụ công">
+            <img src={aiBootsImage} alt="Trợ lý AI hỗ trợ dịch vụ công" />
+          </section>
+        )}
 
         {serviceName && (
           <div className="px-6">
