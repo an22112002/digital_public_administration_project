@@ -860,26 +860,30 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
             {/* SCANNED FILES */}
             {/* ================================================= */}
 
-            <ScannedFiles
-              files={visibleScannedFiles}
-              selectedFileUrls={focusDocument?.files ?? []}
-              selectedFileColor={focusDocument?.color ?? null}
-              onSelectFile={handleSetFileSelectForDocument}
-              onDeleteFile={handleDeleteFile}
-              onPreviewFile={openFilePreview}
-            />
+            <div className={kiosk ? 'kiosk-scanned-files' : undefined}>
+              <ScannedFiles
+                files={visibleScannedFiles}
+                selectedFileUrls={focusDocument?.files ?? []}
+                selectedFileColor={focusDocument?.color ?? null}
+                onSelectFile={handleSetFileSelectForDocument}
+                onDeleteFile={handleDeleteFile}
+                onPreviewFile={openFilePreview}
+              />
+            </div>
 
             {/* ================================================= */}
             {/* DOCUMENTS */}
             {/* ================================================= */}
 
-            <DocumentList
-              documents={visibleDocuments}
-              scannedFiles={visibleScannedFiles}
-              focusDocumentId={focusDocumentId}
-              onSelectDocument={setFocusDocumentId}
-              onOpenAddDocument={() => setIsModalOpen(true)}
-            />
+            <div className={kiosk ? 'kiosk-document-list' : undefined}>
+              <DocumentList
+                documents={visibleDocuments}
+                scannedFiles={visibleScannedFiles}
+                focusDocumentId={focusDocumentId}
+                onSelectDocument={setFocusDocumentId}
+                onOpenAddDocument={() => setIsModalOpen(true)}
+              />
+            </div>
 
           </div>
 

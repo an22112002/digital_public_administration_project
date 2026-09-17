@@ -278,6 +278,24 @@ export default function KioskHomePage() {
 								.Kiosk-service-copy { width: 100%; align-items: flex-start !important; justify-self: start; text-align: left !important; }
 								.Kiosk-service-category, .Kiosk-service-name { width: 100%; text-align: left !important; justify-content: flex-start; }
 								.Kiosk-service-number { flex: 0 0 auto; }
+								.Kiosk-search-box input { font-size: 28px; }
+								.Kiosk-category-filter button { font-size: 22px; }
+								.Kiosk-list-title { font-size: clamp(24px, 2.2vw, 34px); }
+								.Kiosk-service-category { font-size: 21px; }
+								.Kiosk-service-number { font-size: 18px; }
+								.Kiosk-service-name { font-size: 28px; }
+							`}</style>
+							<style>{`
+								@media (min-width: 1400px) {
+									.Kiosk-ai-image h2 { font-size: 40px; }
+									.Kiosk-search-box input { font-size: 24px; }
+									.Kiosk-category-filter button { font-size: 19px; }
+									.Kiosk-list-title { font-size: 25px; }
+									.Kiosk-service-category { font-size: 17px; }
+									.Kiosk-service-number { font-size: 15px; }
+									.Kiosk-service-name { font-size: 22px; }
+									.Kiosk-chevron { font-size: 38px; }
+								}
 							`}</style>
 		</div>
 	);

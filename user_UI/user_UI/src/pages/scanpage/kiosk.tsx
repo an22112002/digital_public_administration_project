@@ -68,7 +68,91 @@ export default function KioskScanPage() {
         .kiosk-scan-page button,
         .kiosk-scan-page select,
         .kiosk-scan-page input {
+          font-size: 22px;
+        }
+
+        .kiosk-scan-page .text-2xl {
+          font-size: 30px;
+        }
+
+        .kiosk-scan-page .text-sm {
+          font-size: 19px;
+        }
+
+        .kiosk-scan-page .text-xs {
+          font-size: 17px;
+        }
+
+        .kiosk-document-list {
+          position: fixed;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          z-index: 20;
+          height: 20vh;
+          overflow: hidden;
+          padding: 10px 24px 14px;
+          background: rgba(255, 248, 243, .97);
+          box-shadow: 0 -8px 24px rgba(117, 48, 27, .16);
+        }
+
+        .kiosk-document-list > aside {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          box-sizing: border-box;
+          max-height: none;
+          margin: 0 auto;
+          max-width: 1440px;
+          border-radius: 18px;
+        }
+
+        .kiosk-document-list .document-list-header {
+          flex: 0 0 auto;
+        }
+
+        .kiosk-document-list .document-list-items {
+          min-height: 0;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .kiosk-scanned-files {
+          min-height: 0;
+          height: 75vh;
+          max-height: none;
+          margin-bottom: 0;
+        }
+
+        .kiosk-scanned-files > section {
+          display: flex;
+          flex-direction: column;
+          height: auto;
+          min-height: 0;
+          max-height: none;
+          margin-bottom: 0;
+        }
+
+        .kiosk-scanned-files .scanned-files-header {
+          flex: 0 0 auto;
+        }
+
+        .kiosk-scanned-files .scanned-files-items {
+          min-height: 0;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .kiosk-document-list .text-2xl {
+          font-size: 26px;
+        }
+
+        .kiosk-document-list .text-sm {
           font-size: 18px;
+        }
+
+        .kiosk-document-list .text-xs {
+          font-size: 16px;
         }
 
         .kiosk-scan-page main > div[class*="border-t"] {
@@ -183,6 +267,15 @@ export default function KioskScanPage() {
         }
 
         @media (max-width: 699px) {
+          .kiosk-scan-page > div {
+            padding-left: 14px;
+            padding-right: 14px;
+          }
+
+          .kiosk-document-list {
+            padding: 8px 10px 10px;
+          }
+
           .kiosk-action-buttons {
             grid-template-columns: 1fr;
           }
@@ -205,6 +298,113 @@ export default function KioskScanPage() {
 
           .kiosk-scan-page main {
             padding: 22px;
+          }
+
+          .kiosk-document-list {
+            padding-left: 42px;
+            padding-right: 42px;
+          }
+        }
+
+        @media (min-width: 1000px) and (max-width: 1100px) and (min-height: 1800px) {
+          .kiosk-scan-page,
+          .kiosk-scan-page > div {
+            height: 100vh;
+            min-height: 0;
+            overflow: hidden;
+          }
+
+          .kiosk-scan-page > div {
+            padding: 18px 28px 0;
+          }
+
+          .kiosk-scan-page header {
+            height: 108px;
+            margin-bottom: 14px;
+            padding: 16px 26px;
+            box-sizing: border-box;
+          }
+
+          .kiosk-scan-ai {
+            height: 252px;
+            min-height: 0;
+            margin-bottom: 16px;
+            padding: 14px 28px;
+          }
+
+          .kiosk-scan-ai img {
+            height: 220px;
+          }
+
+          .kiosk-scan-page main {
+            height: calc(75vh - 408px);
+            min-height: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] {
+            flex: 0 0 136px;
+            gap: 12px;
+            padding-bottom: 16px;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] > div:first-child {
+            min-width: 0;
+            flex: 1 1 330px;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2),
+          .kiosk-action-buttons {
+            min-width: 0;
+            flex: 1 1 500px;
+            gap: 10px;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] button {
+            min-height: 64px;
+            padding: 12px 14px;
+            font-size: 21px;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] select {
+            min-width: 0;
+            min-height: 48px;
+          }
+
+          .kiosk-scan-page main > div.grid {
+            flex: 1 1 auto;
+            min-height: 0;
+            gap: 16px;
+            align-items: start;
+          }
+
+          .kiosk-scanned-files {
+            height: auto;
+            min-height: 0;
+          }
+
+          .kiosk-scanned-files > section {
+            height: auto;
+            padding: 18px;
+          }
+
+          .kiosk-scanned-files .scanned-files-items {
+            flex: 0 1 auto;
+            max-height: calc(75vh - 600px);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            align-content: start;
+          }
+
+          .kiosk-document-list {
+            height: 25vh;
+            padding: 10px 28px 12px;
+          }
+
+          .kiosk-document-list > aside {
+            padding: 16px;
           }
         }
       `}</style>

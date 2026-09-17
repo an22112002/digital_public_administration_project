@@ -20,17 +20,19 @@ export default function ScannedFiles({
   onPreviewFile,
 }: ScannedFilesProps) {
   return (
-    <section className="rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5]">
-      <div className="mb-5 flex items-center justify-between">
+    <section className="scanned-files-panel rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5]">
+      <div className="scanned-files-header mb-5 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-800">File quét</h2>
       </div>
 
       {files.length === 0 ? (
-        <div className="flex min-h-[250px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 text-sm text-slate-400">
-          Chưa có file quét
+        <div className="scanned-files-items">
+          <div className="flex min-h-[250px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 text-sm text-slate-400">
+            Chưa có file quét
+          </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="scanned-files-items grid gap-4 sm:grid-cols-2">
           {files.map((file, index) => {
             const isSelected = selectedFileUrls.includes(file.url);
 
@@ -52,10 +54,10 @@ export default function ScannedFiles({
                     />
                   )}
                   <span className="truncate text-sm font-medium text-slate-600">
-                    Page {index + 1}
+                    {index + 1}
                   </span>
                   <span className="shrink-0 font-bold text-xs text-black hover:text-blue-500 text-center">
-                    Click đây để chọn page
+                    Chọn page
                   </span>
                   <button
                     type="button"

@@ -17,8 +17,8 @@ export default function DocumentList({
   onOpenAddDocument,
 }: DocumentListProps) {
   return (
-    <aside className="rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5] xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
-      <div className="mb-5 flex items-center justify-between gap-3">
+    <aside className="document-list-panel rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5] xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+      <div className="document-list-header mb-5 flex items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-slate-800"><FolderOpenOutlined/>&nbsp;Tài liệu</h2>
         <button
           type="button"
@@ -29,7 +29,7 @@ export default function DocumentList({
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="document-list-items space-y-3">
         {documents.map(doc => {
           const isFocus = focusDocumentId === doc.srID;
           const selectedPageNumbers = scannedFiles
