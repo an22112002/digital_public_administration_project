@@ -138,9 +138,14 @@ export default function KioskScanPage() {
         }
 
         .kiosk-scanned-files .scanned-files-items {
+          flex: 1 1 0;
           min-height: 0;
+          height: 0;
+          max-height: 100%;
           overflow-y: auto;
           padding-right: 4px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          overscroll-behavior: contain;
         }
 
         .kiosk-document-list .text-2xl {
@@ -306,7 +311,6 @@ export default function KioskScanPage() {
           }
         }
 
-        @media (min-width: 1000px) and (max-width: 1100px) and (min-height: 1800px) {
           .kiosk-scan-page,
           .kiosk-scan-page > div {
             height: 100vh;
@@ -349,11 +353,29 @@ export default function KioskScanPage() {
             flex: 0 0 136px;
             gap: 12px;
             padding-bottom: 16px;
+            overflow: hidden;
           }
 
           .kiosk-scan-page main > div[class*="border-t"] > div:first-child {
             min-width: 0;
             flex: 1 1 330px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            gap: 8px;
+            padding: 10px 14px;
+            font-size: 16px;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] > div:first-child label {
+            flex: 0 0 auto;
+            font-size: 16px;
+          }
+
+          .kiosk-scan-page main > div[class*="border-t"] > div:first-child select {
+            flex: 1 1 auto;
+            width: auto;
+            font-size: 17px;
+            padding: 8px 10px;
           }
 
           .kiosk-scan-page main > div[class*="border-t"] > div:nth-child(2),
@@ -379,23 +401,29 @@ export default function KioskScanPage() {
             min-height: 0;
             gap: 16px;
             align-items: start;
+            overflow: hidden;
           }
 
           .kiosk-scanned-files {
-            height: auto;
+            height: 100%;
             min-height: 0;
+            overflow: hidden;
           }
 
           .kiosk-scanned-files > section {
             height: auto;
+            min-height: 100%;
             padding: 18px;
           }
 
           .kiosk-scanned-files .scanned-files-items {
-            flex: 0 1 auto;
-            max-height: calc(75vh - 600px);
+            flex: 1 1 auto;
+            min-height: 0;
+            height: 0;
+            max-height: none;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             align-content: start;
+            overflow-y: auto;
           }
 
           .kiosk-document-list {
@@ -406,7 +434,6 @@ export default function KioskScanPage() {
           .kiosk-document-list > aside {
             padding: 16px;
           }
-        }
       `}</style>
     </div>
   );

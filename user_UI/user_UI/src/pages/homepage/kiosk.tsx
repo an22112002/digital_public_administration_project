@@ -15,6 +15,8 @@ export default function KioskHomePage() {
 	const [selectedCategory, setSelectedCategory] = useState('');
 	const [categories, setCategories] = useState<string[]>([]);
 	const [services, setServices] = useState<Service[]>([]);
+	const [currentPage, setCurrentPage] = useState(1);
+	const servicesPerPage = 8;
 
 	useEffect(() => {
 		let active = true;
@@ -27,6 +29,10 @@ export default function KioskHomePage() {
 	}, []);
 
 	useEffect(() => {
+		setCurrentPage(1);
+	}, [selectedCategory, searchTerm]);
+
+	useEffect(() => {
 		let active = true;
 		getServicesList(selectedCategory, searchTerm).then((result) => {
 			if (active) setServices(result);
@@ -36,7 +42,11 @@ export default function KioskHomePage() {
 		return () => { active = false; };
 	}, [selectedCategory, searchTerm]);
 
-	const visibleServices = services.slice(0, 5);
+	const totalPages = Math.max(1, Math.ceil(services.length / servicesPerPage));
+	const visibleServices = services.slice(
+		(currentPage - 1) * servicesPerPage,
+		currentPage * servicesPerPage,
+	);
 	const categoryOptions = categories.length > 0 ? categories : ['Hộ Tịch', 'Chứng Thực', 'Đánh số'];
 
 	return (
@@ -56,8 +66,13 @@ export default function KioskHomePage() {
 				</div>
 				<h2 className="Kiosk-list-title">DANH SÁCH DỊCH VỤ HỖ TRỢ NỘP HỒ SƠ TỰ ĐỘNG</h2>
 				<section className="Kiosk-service-list">
-					{visibleServices.map((service, index) => <button key={service.serviceID} onClick={() => navigate(`/kiosk/scan/${service.serviceID}`)}><span className="Kiosk-service-copy"><span className="Kiosk-service-category">{service.category.toUpperCase()}</span><span className="Kiosk-service-name"><span className="Kiosk-service-number">{index + 1}</span>{service.title}</span></span><span className="Kiosk-chevron">›</span></button>)}
+					{visibleServices.map((service, index) => <button key={service.serviceID} onClick={() => navigate(`/kiosk/scan/${service.serviceID}`)}><span className="Kiosk-service-copy"><span className="Kiosk-service-category">{service.category.toUpperCase()}</span><span className="Kiosk-service-name"><span className="Kiosk-service-number">{(currentPage - 1) * servicesPerPage + index + 1}</span>{service.title}</span></span><span className="Kiosk-chevron">›</span></button>)}
 				</section>
+				{totalPages > 1 && <nav className="Kiosk-pagination" aria-label="Chuyển trang dịch vụ">
+					<button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1} aria-label="Trang trước">‹</button>
+					{Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => <button type="button" key={page} className={page === currentPage ? 'active' : ''} onClick={() => setCurrentPage(page)} aria-label={`Trang ${page}`}>{page}</button>)}
+					<button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages} aria-label="Trang sau">›</button>
+				</nav>}
 			</main>
 
 			<style>{`
@@ -295,6 +310,16 @@ export default function KioskHomePage() {
 									.Kiosk-service-number { font-size: 15px; }
 									.Kiosk-service-name { font-size: 22px; }
 									.Kiosk-chevron { font-size: 38px; }
+								}
+							`}</style>
+							<style>{`
+								.Kiosk-pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 22px; }
+								.Kiosk-pagination button { min-width: 48px; min-height: 48px; padding: 8px 14px; border: 1px solid #efc5b5; border-radius: 12px; background: #fff; color: #a94b2d; font-size: 20px; font-weight: 800; cursor: pointer; }
+								.Kiosk-pagination button.active, .Kiosk-pagination button:hover:not(:disabled) { border-color: #c84d27; background: #c84d27; color: #fff; }
+								.Kiosk-pagination button:disabled { cursor: not-allowed; opacity: .4; }
+								@media (min-width: 1400px) {
+									.Kiosk-pagination { gap: 8px; margin-top: 14px; }
+									.Kiosk-pagination button { min-width: 40px; min-height: 40px; padding: 6px 11px; font-size: 17px; }
 								}
 							`}</style>
 		</div>
