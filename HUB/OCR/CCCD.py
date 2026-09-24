@@ -6,7 +6,7 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     """
     Gửi prompt và hình ảnh đến LM Studio server để xử lý OCR CCCD.
     """
-    prompt = """
+    prompt_g = """
     Bạn là AI chuyên đọc giấy tờ tùy thân từ hình ảnh.
 
     NHIỆM VỤ:
@@ -95,7 +95,6 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     ĐỊNH NGHĨA: họ và tên mà giấy tờ tùy thân đại diện
 
     VỊ TRÍ TÌM:
-    - MẶT TRƯỚC.
     - Khu vực thông tin cá nhân, nằm dưới mã giấy tờ tùy thân - id_number.
 
     NHÃN:
@@ -103,22 +102,21 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     "FULL NAME"
 
     DẤU HIỆU:
-    - Họ tên luôn luôn viết hoa, có dấu 
+    - Họ tên luôn luôn viết in hoa toàn bộ chữ cái và có dấu 
     Ví dụ: "NGUYỄN VĂN ANH"
 
     GIÁ TRỊ:
     - Lấy đúng họ tên nằm ngay sau/dưới nhãn.
-    - Họ tên được viết hoa, có dấu, không tách ra.
+    - Họ tên được viết in hoa toàn bộ chữ cái và có dấu, không tách ra.
     
     KHÔNG LẤY:
     - Họ tên của người ban hành giấy tờ - issue_person -> không lấy
     - Nếu họ tên chỉ viết hoa chữ cái đầu
     Ví dụ: "Nguyễn Văn Anh" -> không lấy
 
-    Trường này suy ra thông qua các bước dưới đây:
-    Bước 1: Thu thập tất cả các đoạn chữ giống họ tên người.
-
-    Bước 2: Tìm đoạn đầu tiên mà tất cả các chữ cái đều in hoa và có dấu -> đó là họ tên cần lấy.
+    Không được suy luận.
+    Không được chọn tên người dựa trên việc tên đó xuất hiện ở đâu khác.
+    Không được dùng issue_person làm fullname
 
     ==================================================
     4. dob
@@ -341,9 +339,6 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     DẤU HIỆU:
     - Trường này là tên người chỉ viết hoa chữ cái đầu
     Ví dụ: "Nguyễn Văn Anh"
-    - Một số người từng ban hành giấy tờ tùy thân có thể xuất hiện:
-    "Phạm Công Nguyen"
-    "Nguyễn Quốc Hùng"
 
     Trường thông tin này không bắt buộc có thể có hoặc không.
     Trường thông tin này đã bỏ ở trên các loại giấy tờ tùy thân mới
@@ -423,23 +418,62 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     }
     """
 
-    response = await runPromptInLMStudio(
-        prompt,
-        images,
-        server_ip
-    )
+    prompts = [
+    """
+    xác định loại giấy tờ, mã giấy tờ và xác định họ tên, ngày sinh, giới tính, quê quán, nơi thường trú của cá nhân chủ thể của giấy tờ. Trả lời bằng json duy nhất
+    {"type_document": .., "id_number": .., "fullname": .., "dob": .., "sex": .., "hometown": .., "address": ..}
+    - type_document phải là một trong các giá trị:
+    "chứng minh nhân dân"
+    "hộ chiếu"
+    "căn cước công dân"
+    - id_number phải là dãy số 12 chữ số
+    """,
+    """
+    xác định thông tin cấp giấy tờ: ngày hết hạn, ngày cấp, nơi cấp. Trả lời bằng json duy nhất
+    {"expiry_date": .., "issue_date": .., "issue_place": ..}
+    - issue_place có thể không được ghi dõ ràng trên ảnh, nhưng chỉ được chọn một trong các giá trị sau:
+    "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    "Cục Cảnh sát đăng ký quản lý cư trú và dữ liệu quốc gia về dân cư"
+    "Bộ Công an"
+    "Cục Quản lý xuất nhập cảnh"
+    """,
+    ]
+    json_results = {}
 
-    # print("[CCCD_LLM] RAW:", repr(response))
+    for prompt in prompts:
+        response = await runPromptInLMStudio(
+            prompt=prompt,
+            images=images,
+            server_ip=server_ip
+        )
 
-    if not response:
-        raise ValueError("LM Studio trả về response rỗng")
+        if not response:
+            raise ValueError("LM Studio trả về response rỗng")
+
+        try:
+            json_return = parse_json_response(response)
+            print(json_return)
+            for key, value in json_return.items():
+                json_results[key] = value
+        except json.JSONDecodeError as e:
+            print("[CCCD_LLM] Không parse được JSON:")
+            # print(repr(response))
+            raise ValueError(
+                f"LM Studio trả về dữ liệu không phải JSON: {response!r}"
+            ) from e
+
+    print(json_results)
 
     try:
-        json_return = parse_json_response(response)
-        json_return["dob"] = format_date(json_return.get("dob", "UNKNOWN"))
-        json_return["expiry_date"] = format_date(json_return.get("expiry_date", "UNKNOWN"))
-        json_return["issue_date"] = format_date(json_return.get("issue_date", "UNKNOWN"))
-        return json_return
+        json_results["fullname"] = json_results.get("fullname", "UNKNOWN").upper()
+        json_results["dob"] = format_date(json_results.get("dob", "UNKNOWN"))
+        json_results["sex"] = json_results.get("sex", "UNKNOWN")
+        json_results["hometown"] = json_results.get("hometown", "UNKNOWN")
+        json_results["address"] = json_results.get("address", "UNKNOWN")
+        json_results["issue_place"] = json_results.get("issue_place", "UNKNOWN")
+        json_results["expiry_date"] = format_date(json_results.get("expiry_date", "UNKNOWN"))
+        json_results["issue_date"] = format_date(json_results.get("issue_date", "UNKNOWN"))
+        return json_results
     except json.JSONDecodeError as e:
         print("[CCCD_LLM] Không parse được JSON:")
         # print(repr(response))

@@ -67,6 +67,13 @@ async def insertMain(personal_data: dict):
     ])
     await formInsert(data)
 
+async def setCopyNumber(number: int):
+    data = [
+        ("tab", 5),
+        ("text", str(number))
+    ]
+    await formInsert(data)
+
 # điền thông tin vào form xacNhanTinhTrangHonNhan
 async def formXacNhanTinhTrangHonNhanInsert(form_data: list[dict]):
     # reset con trỏ về đầu form
@@ -80,11 +87,13 @@ async def formXacNhanTinhTrangHonNhanInsert(form_data: list[dict]):
         person = form_data[0]
         await insertDo(person, is_main=True)  # điền thông tin cá nhân của người điền
         await insertMain(person)  # điền thông tin cá nhân của người còn lại
+        await setCopyNumber(1)  # điền số bản sao
         return
     else:
         do_person = next((p for p in form_data if p["type"] == "cccd_do"), None)
         main_person = next((p for p in form_data if p["type"] == "cccd_main"), None)
         await insertDo(do_person, is_main=False)  # điền thông tin cá nhân của người điền
         await insertMain(main_person)  # điền thông tin cá nhân của người còn lại
+        await setCopyNumber(1)  # điền số bản sao
 
             

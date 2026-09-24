@@ -8,7 +8,7 @@
 	<LLM_context_length>8192</LLM_context_length>
 	<title>Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công</title>
 	<naps2_path>D:\NAPS2\NAPS2.Console.exe</naps2_path>
-	<province>Thành phố Hồ Chí Minh</province>
-	<commune>Phường Tam Thắng</commune>
+	<province>Tỉnh Bắc Ninh</province>
+	<commune>Phường Tân Tiến</commune>
 	<scanner_save_path>D:\scanned_files</scanner_save_path>
 </settings>

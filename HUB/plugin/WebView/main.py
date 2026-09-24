@@ -68,6 +68,10 @@ class SupportApi:
 
         return True
 
+    def finish(self):
+        print("[PY] Finish WebView")
+        return True
+
     def reset_form_fill(self):
         """Cho phép WebView chạy lại thao tác nhập form."""
         with self.fill_form_lock:
@@ -385,6 +389,30 @@ def checkCantReachThisPage(window):
         return true;
     })();
     """)
+# Tìm thấy <p> có text "Gửi hồ sơ thành công" -> gửi API báo thành công
+def checkSuccessMessage(window):
+    window.evaluate_js("""
+    (() => {
+        const timer = setInterval(() => {
+            const p = [...document.querySelectorAll("p")]
+                .find(p => p.textContent.trim() === "Gửi hồ sơ thành công");
+
+            if (p) {
+                window.pywebview.api.finish();
+                clearInterval(timer);
+            }
+        }, 1000);
+    })();
+    """)
+
+def checkURLweb(window):
+    window.evaluate_js("""
+    (() => {
+        const url = window.location.href;
+        window.pywebview.api.log("Current URL:", url);
+        return;
+    })();
+    """)
 
 # hàm thêm các công cụ hỗ trợ vào giao diện webview, bao gồm nút Reload và nút Close. 
 # Nút Reload sẽ tải lại trang web hiện tại, trong khi nút Close sẽ đóng cửa sổ webview.
@@ -509,6 +537,10 @@ def on_loaded(window, data_process: list[DataProcess]):
     btnXacNhanClick(window)
 
     checkCantReachThisPage(window)
+
+    checkSuccessMessage(window)
+
+    checkURLweb(window)
 
     for process in data_process:
         if process.task_name == "auto_pass_select_service":

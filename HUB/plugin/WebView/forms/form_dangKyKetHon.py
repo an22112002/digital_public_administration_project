@@ -92,6 +92,14 @@ async def fill_extention():
     await press_key("select", "hiện tại chưa đăng ký kết hôn với ai")  # tình trạng hôn nhân
     time.sleep(0.05)
 
+async def setCopyNumber(number: int):
+    data = [
+        ("checkbox", 1),
+        ("tab", 1),
+        ("text", str(number))
+    ]
+    await formInsert(data)
+
 # điền thông tin vào form đăng ký kết hôn
 async def formDangKyKetHonInsert(form_data: list[dict]):
     # reset con trỏ về đầu form
@@ -142,6 +150,7 @@ async def formDangKyKetHonInsert(form_data: list[dict]):
         keyboard.send_keys("{TAB}")     # Tab để chuyển đến trường tiếp theo
         time.sleep(0.05)
         keyboard.send_keys("{SPACE}")   # Space để chọn checkbox
+        await setCopyNumber(1)  # điền số bản sao
         # end
         return
 
