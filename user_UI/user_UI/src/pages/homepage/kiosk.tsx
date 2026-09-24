@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCategories, getServicesList } from '../../api/servicesAPI';
 import type { Service } from '../../api/servicesAPI';
 import Header from '../../header/header';
-import aiBootsImage from '../../assets/ai boots.png';
+import aiBootsImage from '../../assets/images/ai boots.png';
 
 function SearchIcon({ className = '' }: { className?: string }) {
 	return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.7" /><path d="m16 16 4.2 4.2" strokeLinecap="round" /></svg>;

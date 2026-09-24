@@ -8,9 +8,10 @@ import uuid
 
 import asyncio
 from OCR.main import processOCR2
+import cv2
 
 from backend.crud.processCrud import get_service_by_id, get_documents_to_scan, get_service_documents
-from backend.models.processModels import UserTask, StartScanRequest, StartWebViewRequest, WebSocketRequest, CropImageRequest
+from backend.models.processModels import UserTask, StartScanRequest, StartWebViewRequest, WebSocketRequest, CropImageRequest, RotateImageRequest
 from backend.config import open_settings
 from backend.crop.main import splitPDF, detect_and_crop_image, extendImage, crop_with_position
 
@@ -166,6 +167,35 @@ async def processCropImage(request: CropImageRequest, user_task: UserTask):
                 "message": str(e)
             })
 
+# Xử lý việc xoay ảnh theo góc người dùng yêu cầu, nhận vào đường dẫn file ảnh và góc xoay, trả về đường dẫn file ảnh đã xoay
+async def processRotateImage(request: RotateImageRequest, user_task: UserTask):
+    try:
+        image_path = request.image
+
+        img = cv2.imread(image_path)
+
+        # Xoay 90 độ theo chiều kim đồng hồ
+        rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+
+        cv2.imwrite(image_path, rotated)
+
+        print(f"[WebSocket] Rotated image saved at: {image_path}")
+        print(f"[WebSocket] Sending rotated image path back to client.")
+        print(f"[WebSocket] Sent rotated image path back to client: {image_path}")
+
+        await user_task.websocket.send_json({
+            "type": "rotate_status",
+            "status": "success",
+            "rotated_image": image_path
+        })
+    except Exception as e:
+        log_exception(e, "HUB")
+        await user_task.websocket.send_json({
+            "type": "rotate_status",
+            "status": "error",
+            "message": str(e)
+        })
+
 # Xử lý việc nhập file pdf từ client, chia nó ra thành các trang ảnh và gửi về client
 async def processImportFile(data, user_task: UserTask):
     # Force stdout/stderr to UTF-8
@@ -238,7 +268,9 @@ async def processImportFile(data, user_task: UserTask):
 # Xử lý các yêu cầu từ WebSocket
 async def processWebSocket(data, user_task: UserTask) -> bool:
     request = WebSocketRequest(**data)
+    print(f"[WebSocket] Received request: {request.type}")
     if request.type == "start_scan":
+        # Xử lý yêu cầu quét tài liệu
         asyncio.create_task(scanActivate(request.request, user_task))
         await user_task.websocket.send_json({
             "type": "scan_status",
@@ -269,6 +301,15 @@ async def processWebSocket(data, user_task: UserTask) -> bool:
             "status": "crop started"
         })
         return True
+    elif request.type == "rotate_image":
+        # Xử lý yêu cầu xoay ảnh
+        print(f"[WebSocket] Received rotate_image request: {request.request}")
+        asyncio.create_task(processRotateImage(request.request, user_task))
+        await user_task.websocket.send_json({
+            "type": "rotate_status",
+            "status": "rotate started"
+        })
+        return True
     elif request.type == "close":
         await user_task.websocket.close()
         return False
@@ -281,46 +322,65 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
     ocr_data = []
     provieded_documents = webview_request.files
     # thiếu tài liệu -> báo lỗi, thừa tài liệu -> thêm vào theo mẫu, đủ tài liệu -> tiếp tục
+    required_document_ids = {str(doc["srID"]) for doc in user_task.required_documents}
+
     for doc in user_task.required_documents:
-        # tìm tài liệu tương ứng trong provieded_documents
-        matching_doc = next((d for d in provieded_documents if d.srID == str(doc['srID'])), None)
-        if matching_doc:
-            documents_data.append({
-                "srID": str(doc['srID']),
-                "title": doc['title'],
-                "required": doc['required'],
-                "files": matching_doc.files,
-                "ocr_enabled": doc['ocr_enabled'],
-                "code": doc['code']
-            })
-    # kiểm tra số lượng tài liệu
-    if len(documents_data) < len(user_task.required_documents):
-        await user_task.websocket.send_json({
-            "type": "webview_data",
-            "status": "error",
-            "message": "Thiếu tài liệu cần thiết."
+        # Tài liệu trong user_task là danh sách chuẩn để đối chiếu request.
+        matching_doc = next(
+            (item for item in provieded_documents if str(item.srID) == str(doc["srID"])),
+            None,
+        )
+        files = matching_doc.files if matching_doc else []
+        requirement_type = doc["requirementType"]
+
+        documents_data.append({
+            "srID": str(doc["srID"]),
+            "title": doc["title"],
+            "requirementType": requirement_type,
+            "files": files,
+            "ocr_enabled": doc["ocr_enabled"],
+            "code": doc["code"]
         })
-        raise ValueError("Thiếu tài liệu cần thiết.")
     # thêm các tài liệu thừa vào documents_data
     for prov_doc in provieded_documents:
-        if str(prov_doc.srID).startswith("ADD"):
+        if str(prov_doc.srID).startswith("ADD") and str(prov_doc.srID) not in required_document_ids:
             documents_data.append({
                 "srID": str(prov_doc.srID),
                 "title": parse_add_document_title(str(prov_doc.srID)),
-                "required": False,
+                "requirementType": "OPTIONAL",
                 "files": prov_doc.files,
                 "ocr_enabled": False,
                 "code": await codeForAddDocument(str(prov_doc.srID))
             })
-    # Kiểm tra các tài liệu required có len(files) > 0 hay không, nếu không thì gửi thông báo lỗi
+    # REQUIRED và OCR_REQUIREMENT phải xuất hiện và phải có file.
+    # CONDITIONAL và OCR_REQUIRED_CONDITIONAL không bắt buộc xuất hiện,
+    # nhưng nếu xuất hiện thì phải có file.
     for doc in documents_data:
-        if doc['required'] and len(doc['files']) == 0:
+        requirement_type = doc["requirementType"]
+        has_files = bool(doc["files"])
+        matching_doc_exists = doc["srID"] in {
+            str(item.srID) for item in provieded_documents
+        }
+
+        if requirement_type in ["REQUIRED", "OCR_REQUIREMENT"] and not has_files:
             await user_task.websocket.send_json({
                 "type": "webview_data",
                 "status": "error",
-                "message": f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp."
+                "message": f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp hoặc chưa có file."
             })
-            raise ValueError(f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp.")
+            raise ValueError(f"Tài liệu bắt buộc: {doc['title']}, chưa được cung cấp hoặc chưa có file.")
+
+        if (
+            requirement_type in ["CONDITIONAL", "OCR_REQUIRED_CONDITIONAL"]
+            and matching_doc_exists
+            and not has_files
+        ):
+            await user_task.websocket.send_json({
+                "type": "webview_data",
+                "status": "error",
+                "message": f"Tài liệu đã chọn: {doc['title']}, chưa có file."
+            })
+            raise ValueError(f"Tài liệu đã chọn: {doc['title']}, chưa có file.")
     # mở rộng ảnh với các tài liệu có yêu cầu
     for doc in documents_data:
         await autoExtendImage(doc)
@@ -336,7 +396,7 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
         else:
             doc['pdf_path'] = ""
     # xử lý các tài liệu cần ocr
-    # nếu mode = basic thì bỏ qua ocr, nếu mode = advanced thì thực hiện ocr cho các tài liệu cần ocr
+    # nếu mode = basic thì bỏ qua ocr, nếu ko thì thực hiện ocr cho các tài liệu cần ocr
     if user_task.mode == "basic":
         ocr_final_results = []
         for doc in documents_data:
@@ -345,13 +405,13 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
     else:
         server_ip = user_task.server_ip
         for doc in documents_data:
-            if doc['ocr_enabled']:
+            if doc['ocr_enabled'] and len(doc['files']) > 0:
                 ocr_data.append({
                     "srID": doc['srID'],
                     "code": doc['code'],
                     "files": doc['files']
                 })
-        ocr_final_results = await OCRDocuments2(ocr_data, server_ip)
+        ocr_final_results = await OCRDocuments(ocr_data, server_ip)
     # lấy danh sách tài liệu cần upload: service_documents của service
     service_docs = get_service_documents(user_task.service['serviceID'])
     for doc in service_docs:
@@ -382,9 +442,17 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
         source_ref = doc["sourceRef"]
         # nếu source_type là "SCAN" thì tìm tài liệu tương ứng trong documents_data theo source_ref (là code của tài liệu), nếu tìm thấy thì thêm vào files_insert_data
         if source_type == "SCAN":
-            matching_doc = next((d for d in documents_data if d['code'] == source_ref), None)
+            source_refs = [ref.strip() for ref in (source_ref or "").split("|") if ref.strip()]
+            normalized_source_ref = str(source_ref or "").strip()
+            matching_doc = next(
+                (
+                    d for d in documents_data
+                    if str(d.get("code") or "").strip() == normalized_source_ref
+                ),
+                None,
+            )
             # nếu match -> tài liệu kiểu thường
-            if matching_doc:
+            if matching_doc and matching_doc["files"]:
                 files_insert_data.append({
                     "name": doc['realTitle'],
                     "file": matching_doc['pdf_path'],
@@ -393,14 +461,23 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                 doc['ready'] = True
             # nếu không match -> tài liệu kiểu đặc biệt, kết hơp từ nhiều tài liệu, ví dụ: "CCCD vợ chồng" -> ghép từ "CCCD chồng" và "CCCD vợ"
             else:
-                # tìm các source_ref
-                source_refs = source_ref.split("|")
                 images_to_merge = []
+                all_refs_available = bool(source_refs)
+                missing_refs = []
                 for sr in source_refs:
-                    matching_doc = next((d for d in documents_data if d['code'] == sr), None)
-                    if matching_doc:
+                    matching_doc = next(
+                        (
+                            d for d in documents_data
+                            if str(d.get("code") or "").strip() == sr
+                        ),
+                        None,
+                    )
+                    if matching_doc and matching_doc["files"]:
                         images_to_merge.extend(matching_doc['files'])
-                if len(images_to_merge) > 0:
+                    else:
+                        all_refs_available = False
+                        missing_refs.append(sr)
+                if all_refs_available and images_to_merge:
                     os.makedirs(os.path.join(SCANNER_SAVE_PATH, f"patch_{user_task.timestamp}", "upload"), exist_ok=True)
                     output_pdf_path = os.path.join(SCANNER_SAVE_PATH, f"patch_{user_task.timestamp}", "upload", f"Giay_to_{doc['sdID']}.pdf")
                     await merge_images_to_pdf(images_to_merge, output_pdf_path)
@@ -410,6 +487,11 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                         "ref": doc['sourceRef']
                     })
                     doc['ready'] = True
+                elif missing_refs:
+                    doc["skip_webview"] = True
+                    print(
+                        f"missing files for refs: {', '.join(missing_refs)}"
+                    )
     # xử lý doc FORM
     for doc in service_docs:
         source_type = doc["sourceType"]
@@ -421,6 +503,10 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                 continue
             form_key = doc["formKey"]
             source_refs = source_ref.split("|")
+            # số lượng tài liệu cần ocr, bỏ qua các tài liệu đặc biệt có @
+            # tài liệu có @, là tài liệu đặc biệt, có thể có hoặc ko cần ocr, ví dụ: "Giấy tờ bổ sung" -> có thể có hoặc ko cần ocr
+            min_refs = len([sr for sr in source_refs if "@" not in sr])
+            max_refs = len(source_refs)  
             OCRDocsRequested = []
             # xử lý các tài liệu cần nhập form, data lấy từ ocr
             for sr in source_refs:
@@ -428,16 +514,28 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                     key = sr[4:]
                 else:
                     key = sr
+                key = key.replace("@", "")
                 for ocr_data in ocr_final_results:
                     if key == ocr_data['type']:
                         OCRDocsRequested.append(ocr_data)
-            if len(OCRDocsRequested) == len(source_refs):
+            # số lượng tài liệu đã OCR phải nằm trong khoảng từ số lượng tài liệu tối thiểu đến số lượng tài liệu tối đa, nếu ko thì báo lỗi
+            print(OCRDocsRequested)
+            if min_refs <= len(OCRDocsRequested) <= max_refs:
                 OCRDocsRequested = await processLogicOCRData(form_key, OCRDocsRequested, files_insert_data)
                 # nếu đủ số lượng tài liệu cần ocr thì ok
                 data_process.append(DataProcess(task_name=form_key, data=OCRDocsRequested))
                 doc['ready'] = True
+            else:
+                await user_task.websocket.send_json({
+                    "type": "webview_data",
+                    "status": "error",
+                    "message": f"Tài liệu cần ocr: {doc['realTitle']}, số lượng tài liệu ocr không đủ. Yêu cầu từ {min_refs} đến {max_refs}, nhưng chỉ nhận được {len(OCRDocsRequested)}."
+                })
+                raise ValueError(f"Tài liệu cần ocr: {doc['realTitle']}, số lượng tài liệu ocr không đủ. Yêu cầu từ {min_refs} đến {max_refs}, nhưng chỉ nhận được {len(OCRDocsRequested)}.")
     # kiểm tra xem tất cả các tài liệu cần upload đã sẵn sàng chưa, nếu chưa thì gửi thông báo lỗi
     for doc in service_docs:
+        if doc.get("skip_webview"):
+            continue
         if not doc['ready']:
             await user_task.websocket.send_json({
                 "type": "webview_data",
@@ -469,7 +567,6 @@ async def processWebView(webview_request: StartWebViewRequest, user_task: UserTa
 
     try:
         user_task.set_data_from_client(webview_request)
-        print(user_task.is_ready_for_web_view())
         if not user_task.is_ready_for_web_view():
             user_task.data_ready_for_web_view = await readyDataForWebView(webview_request, user_task)
             user_task.need_process = False
@@ -590,29 +687,6 @@ async def get_images_from_folder(timestamp: int, folder_path: str):
             })
     return images
 
-# async def OCRDocuments(ocr_data: list[dict]):
-#     """
-#     Hàm thực hiện OCR cho các tài liệu trong ocr_data.
-#     :param ocr_data: Danh sách các dict, mỗi dict có 
-#     srID: str - ID của yêu cầu quét, nếu là "ADD:<tên tài liệu>" thì nó là tài liệu bổ sung
-#     code: str - mã của tài liệu, ví dụ: "cccd_huband", "cccd_wife"
-#     files: list[str] - danh sách đường dẫn đến các file cần OCR
-#     :return: Danh sách các dict chứa kết quả OCR."""
-#     # xử lý OCR cho các tài liệu trong ocr_data
-#     # ocr_data là một danh sách các dict, mỗi dict có srID và files
-#     ocr_final_results = []
-#     for doc in ocr_data:
-#         code = doc['code']
-#         files = doc['files']
-#         # thực hiện OCR cho từng document cần OCR
-#         result = await processOCR(code, files)
-#         if result is not None:
-#             ocr_final_results.append(result)
-#         else:
-#             raise ValueError(f"Không đọc được thông tin từ QR của: {code}")
-#     # print(f"OCR final results: {ocr_final_results}")
-#     return ocr_final_results
-
 async def codeForAddDocument(srID: str):
     """
     Hàm chuẩn hóa mã code cho các tài liệu bổ sung (ADD).
@@ -637,7 +711,7 @@ async def codeForAddDocument(srID: str):
         code = "bhyt"
     return code
 
-async def OCRDocuments2(ocr_data: list[dict], server_ip: str):
+async def OCRDocuments(ocr_data: list[dict], server_ip: str):
     """
     Hàm thực hiện OCR cho các tài liệu trong ocr_data.
     :param ocr_data: Danh sách các dict, mỗi dict có 
@@ -668,28 +742,21 @@ async def processLogicOCRData(form_key, OCRDocsRequested, files_insert_data):
     :param files_insert_data: list[dict] - danh sách các file cần điền vào form
     :return: list[dict] - danh sách các dict chứa dữ liệu đã xử lý cho form
     """
-    if form_key == "form_caiChinhHoTich" or form_key == "form_xacNhanTinhTrangHonNhan":
-        cccd_self = next((d for d in OCRDocsRequested if d['type'] == 'cccd_self'), None)
-        cccd_main = next((d for d in OCRDocsRequested if d['type'] == 'cccd_main'), None)
-        if cccd_self and cccd_main and cccd_self['id_number'] == cccd_main['id_number']:
-            # nếu id_number giống nhau thì đánh dấu cccd_self chính là main chủ thể 
-            cccd_self["isSelf"] = True
-        else:
-            cccd_self["isSelf"] = False
-        # thay self mới vào results, giữ nguyên các dữ liệu khác
-        OCRDocsRequested = [d for d in OCRDocsRequested if d['type'] != 'cccd_self']
-        OCRDocsRequested.append(cccd_self)
     if form_key == "form_xacNhanTinhTrangHonNhan":
-        # nếu có ref d6_3 trong files_insert_data thì 
+        # nếu có ref d6_3 trong files_insert_data của cccd_self thì đánh dấu firstTime = False, nếu không thì firstTime = True
+        cccd_do = next((d for d in OCRDocsRequested if d['type'] == 'cccd_do'), None)
         cccd_main = next((d for d in OCRDocsRequested if d['type'] == 'cccd_main'), None)
+        if cccd_do:
+            cccd_process = cccd_do
+        else:
+            cccd_process = cccd_main
         x = any(f.get('ref') == 'd6_3' and f.get('file') != "" for f in files_insert_data)
         if x:
-            cccd_main["firstTime"] = False
+            cccd_process["firstTime"] = False
         else:
-            cccd_main["firstTime"] = True
-        OCRDocsRequested = [d for d in OCRDocsRequested if d['type'] != 'cccd_main']
-        OCRDocsRequested.append(cccd_main)
-        
+            cccd_process["firstTime"] = True
+        OCRDocsRequested = [d for d in OCRDocsRequested if d['type'] != cccd_process['type']]
+        OCRDocsRequested.append(cccd_process)
         
     return OCRDocsRequested
 

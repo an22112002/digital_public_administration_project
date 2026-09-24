@@ -22,18 +22,6 @@ if errorlevel 1 (
 echo [3/4] Preparing service list...
 set SERVICES=mysql redis
 
-if exist "HUB_fe\HUB_fe\Dockerfile" (
-    set SERVICES=!SERVICES! hub-fe
-) else (
-    echo [WARN] Skip hub-fe ^(missing HUB_fe\HUB_fe\Dockerfile^)
-)
-
-if exist "user_UI\user_UI\Dockerfile" (
-    set SERVICES=!SERVICES! user-ui
-) else (
-    echo [WARN] Skip user-ui ^(missing user_UI\user_UI\Dockerfile^)
-)
-
 echo [4/4] Running Docker Compose for: !SERVICES!
 docker compose up -d --build !SERVICES!
 if errorlevel 1 (

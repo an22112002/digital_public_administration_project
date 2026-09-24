@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import Header from '../../header/header';
-import aiBootsImage from '../../assets/ai boots.png';
+import aiBootsImage from '../../assets/images/ai boots.png';
+import VNeIDScan from '../../assets/images/vneid_login_scan.jpg';
 import { useParams } from 'react-router-dom';
 import { getScannerOptions } from '../../api/scannerAPI';
 import type { ScannerOption } from '../../api/scannerAPI';
@@ -21,6 +22,7 @@ import type { DocumentItem, ScanFile, SendFile } from '../../components/scanpage
 export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const websocket = useRef<WebSocket | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
+  const rotateTargetUrlRef = useRef<string | null>(null);
 
   const { serviceID } = useParams<{ serviceID: string }>();
 
@@ -33,12 +35,18 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const [serviceName, setServiceName] = useState<string | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [scannedFiles, setScannedFiles] = useState<ScanFile[]>([]);
+  const scannedFilesRef = useRef<ScanFile[]>([]);
+  scannedFilesRef.current = scannedFiles;
   const [deletedFileUrls, setDeletedFileUrls] = useState<string[]>([]);
+  const [hidePagesFromOtherDocuments, setHidePagesFromOtherDocuments] =
+    useState(true);
 
   // Chỉ lưu ID của document đang focus
   const [focusDocumentId, setFocusDocumentId] = useState<string | null>(
     null
   );
+  const focusDocumentIdRef = useRef<string | null>(null);
+  focusDocumentIdRef.current = focusDocumentId;
 
   const [scannerOptions, setScannerOptions] =
     useState<ScannerOption[]>([]);
@@ -71,18 +79,46 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
   const [newExtensionDocumentTypes, setNewExtensionDocumentTypes] = useState<string>();
 
+  const normalizeDocumentCode = (code: string) => code.trim().toLocaleLowerCase();
+
+  const selectedOptionalDocuments = documents.filter(
+    doc =>
+      doc.requirementType === 'OPTIONAL' &&
+      selectedSupplementalDocumentIds.includes(doc.srID)
+  );
+
+  const selectedOptionalCodes = new Set(
+    selectedOptionalDocuments
+      .map(doc => normalizeDocumentCode(doc.code))
+      .filter(Boolean)
+  );
+
   const supplementalDocuments = documents.filter(
     doc =>
-      !doc.required &&
+      doc.requirementType === 'OPTIONAL' &&
       !doc.srID.startsWith('ADD:') &&
       !selectedSupplementalDocumentIds.includes(doc.srID)
   );
 
-  const visibleDocuments = documents.filter(
-    doc =>
-      doc.required ||
-      selectedSupplementalDocumentIds.includes(doc.srID)
-  );
+  const visibleDocuments = documents.filter(doc => {
+    if (doc.requirementType === 'REQUIRED' || doc.requirementType === 'OCR_REQUIREMENT') {
+      return true;
+    }
+
+    if (doc.requirementType === 'OPTIONAL') {
+      return selectedSupplementalDocumentIds.includes(doc.srID);
+    }
+
+    if (doc.requirementType === 'CONDITIONAL' || doc.requirementType === 'OCR_REQUIRED_CONDITIONAL') {
+      const documentCode = normalizeDocumentCode(doc.code);
+      return doc.connect.some(code => selectedOptionalCodes.has(normalizeDocumentCode(code))) ||
+        selectedOptionalDocuments.some(optional =>
+          optional.connect.some(code => normalizeDocumentCode(code) === documentCode)
+        );
+    }
+
+    return false;
+  });
 
   useEffect(() => {
     if (processError) {
@@ -97,6 +133,19 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const visibleScannedFiles = scannedFiles.filter(
     file => !deletedFileUrls.includes(file.url)
   );
+  const pageNumbers = Object.fromEntries(
+    visibleScannedFiles.map((file, index) => [file.url, index + 1])
+  );
+
+  const displayedScannedFiles = hidePagesFromOtherDocuments
+    ? visibleScannedFiles.filter(file => {
+      const selectedByOtherDocument = documents.some(doc =>
+        doc.srID !== focusDocumentId && (doc.files ?? []).includes(file.url)
+      );
+
+      return !selectedByOtherDocument;
+    })
+    : visibleScannedFiles;
 
   // =========================================================
   // WEBSOCKET RECEIVE
@@ -122,7 +171,10 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       // thì chọn document đầu tiên
       if (newDocuments.length > 0 && !focusDocumentId) {
         const firstVisibleDocument =
-          newDocuments.find(doc => doc.required) ??
+          newDocuments.find(doc =>
+            doc.requirementType === 'REQUIRED' ||
+            doc.requirementType === 'OCR_REQUIREMENT'
+          ) ??
           newDocuments[0];
 
         setFocusDocumentId(firstVisibleDocument.srID);
@@ -165,6 +217,47 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       return;
     }
 
+    const isRotateMessage = data['type'] === 'rotate_status';
+
+    if (isRotateMessage) {
+      if (data['status'] === 'error' || data['error']) {
+        setProcessError(String(data['message'] ?? data['error'] ?? 'Không thể xoay ảnh'));
+        rotateTargetUrlRef.current = null;
+        return;
+      }
+
+      const targetUrl = rotateTargetUrlRef.current;
+
+      if (targetUrl) {
+        const cacheBust = Date.now();
+
+        setScannedFiles(previousFiles => previousFiles.map(file => {
+          if (file.url !== targetUrl) {
+            return file;
+          }
+
+          return {
+            ...file,
+            link: `${file.link.split('?')[0]}?v=${cacheBust}`,
+          };
+        }));
+
+        setPreviewFile(previousFile => {
+          if (!previousFile || previousFile.url !== targetUrl) {
+            return previousFile;
+          }
+
+          return {
+            ...previousFile,
+            link: `${previousFile.link.split('?')[0]}?v=${cacheBust}`,
+          };
+        });
+      }
+
+      rotateTargetUrlRef.current = null;
+      return;
+    }
+
     // =======================================================
     // SCAN STATUS
     // =======================================================
@@ -184,10 +277,38 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
         case 'success': {
           setScanError(null);
           const images: ScanFile[] = data['images'] ?? [];
+          const existingFileUrls = new Set(
+            scannedFilesRef.current.map(file => file.url)
+          );
+          const newlyScannedImages = images.filter(
+            image => !existingFileUrls.has(image.url)
+          );
 
           // Không thêm colors vào scannedFiles nữa.
           // Màu sẽ được tính dựa trên documents.
           setScannedFiles(images);
+
+          const currentFocusDocumentId = focusDocumentIdRef.current;
+
+          if (currentFocusDocumentId && newlyScannedImages.length > 0) {
+            const imageUrls = newlyScannedImages.map(image => image.url);
+
+            setDocuments(previousDocuments => previousDocuments.map(document => {
+              if (document.srID !== currentFocusDocumentId) {
+                return document;
+              }
+
+              const currentFiles = document.files ?? [];
+
+              return {
+                ...document,
+                files: [
+                  ...currentFiles,
+                  ...imageUrls.filter(url => !currentFiles.includes(url)),
+                ],
+              };
+            }));
+          }
 
           console.log('Scan successful');
           break;
@@ -261,8 +382,9 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       code: '',
       title: type,
       description: '',
-      required: false,
+      requirementType: 'OPTIONAL',
       ocr_enabled: false,
+      connect: [],
       files: [],
       color: getFileColorFromIndex(documents.length),
     };
@@ -286,9 +408,27 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   };
 
   const handleSelectSupplementalDocument = (srID: string) => {
-    setSelectedSupplementalDocumentIds(prev =>
-      prev.includes(srID) ? prev : [...prev, srID]
-    );
+    const selectedDocument = documents.find(doc => doc.srID === srID);
+    const connectedDocumentIds = selectedDocument
+      ? documents
+        .filter(doc => {
+          const selectedCode = normalizeDocumentCode(selectedDocument.code);
+          const documentCode = normalizeDocumentCode(doc.code);
+
+          return selectedDocument.connect.some(code =>
+            normalizeDocumentCode(code) === documentCode
+          ) || doc.connect.some(code =>
+            normalizeDocumentCode(code) === selectedCode
+          );
+        })
+        .map(doc => doc.srID)
+      : [];
+    const documentIdsToSelect = [srID, ...connectedDocumentIds];
+
+    setSelectedSupplementalDocumentIds(prev => [
+      ...prev,
+      ...documentIdsToSelect.filter(documentId => !prev.includes(documentId)),
+    ]);
     setFocusDocumentId(srID);
     setIsModalOpen(false);
   };
@@ -320,6 +460,24 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       request: {
         image: file.url,
         position: position ?? null,
+      },
+    }));
+  };
+
+  const handleRotateFile = (file: ScanFile) => {
+    const ws = websocket.current;
+
+    if (ws?.readyState !== WebSocket.OPEN) {
+      setProcessError('WebSocket chưa kết nối');
+      return;
+    }
+
+    rotateTargetUrlRef.current = file.url;
+    setProcessError(null);
+    ws.send(JSON.stringify({
+      type: 'rotate_image',
+      request: {
+        image: file.url
       },
     }));
   };
@@ -374,9 +532,8 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   // =========================================================
 
   const handleSubmitDocuments = () => {
-    const missingRequiredDocs = documents.filter(
+    const missingRequiredDocs = visibleDocuments.filter(
       doc =>
-        doc.required &&
         (!doc.files || doc.files.length === 0)
     );
 
@@ -390,7 +547,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       return;
     }
 
-    const sendFiles: SendFile[] = documents.map(
+    const sendFiles: SendFile[] = visibleDocuments.map(
       doc => ({
         srID: doc.srID,
         files: doc.files ?? [],
@@ -684,6 +841,10 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
           <p className="text-lg font-medium text-slate-800">
             Đang xử lý...
           </p>
+          <img src={VNeIDScan} alt="Quét QR VNeID" className="h-auto w-[40%] max-w-xs" />
+          <p className="text-sm font-bold px-4 text-center">
+            Vui lòng mở sẵn tính năng quét QR của ứng dụng VNeID trên điện thoại trong thời gian chờ đợi.
+          </p>
         </div>
       </Modal>
 
@@ -698,7 +859,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
         )}
 
         {serviceName && (
-          <div className="px-6">
+          <div className="px-6 py-3">
             Dịch vụ: <span className="font-semibold">{serviceName}</span>
           </div>
         )}
@@ -751,7 +912,8 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
             {/* SCANNER */}
 
-            <div className="flex items-center gap-3 justify-center rounded-[16px] bg-[#bd2517] px-6 py-4 text-sm font-medium text-white shadow-[0_12px_30px_rgba(189,37,23,0.3)] transition hover:bg-[#a51f13] sm:justify-start">
+            {!kiosk && (
+              <div className="flex items-center gap-3 justify-center rounded-[16px] bg-[#bd2517] px-6 py-4 text-sm font-medium text-white shadow-[0_12px_30px_rgba(189,37,23,0.3)] transition hover:bg-[#a51f13] sm:justify-start">
 
               <label
                 className="text-sm font-lg text-white"
@@ -786,7 +948,8 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
                 )}
               </select>
 
-            </div>
+              </div>
+            )}
 
             {/* BUTTONS */}
 
@@ -800,25 +963,27 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
                 onChange={handleImportFile}
               />
 
-              <div className={kiosk ? 'kiosk-action-button' : 'relative'}>
-                {actionHint === 'import' && (
-                  <ArrowDownOutlined
-                    className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#e63a12]"
-                    aria-label="Mũi tên hướng dẫn nộp file"
-                  />
-                )}
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center rounded-[16px] bg-[#e63a12] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(230,58,18,0.28)] transition hover:bg-[#c92f0d]"
-                  onClick={() => {
-                    setActionHint(null);
-                    fileInput.current?.click();
-                  }}
-                >
-                  <FilePdfOutlined />&nbsp;
-                  Nộp file
-                </button>
-              </div>
+              {!kiosk && (
+                <div className="relative">
+                  {actionHint === 'import' && (
+                    <ArrowDownOutlined
+                      className="absolute -top-8 left-0 right-0 z-10 mx-auto w-fit animate-bounce text-2xl text-[#e63a12]"
+                      aria-label="Mũi tên hướng dẫn nộp file"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-[16px] bg-[#e63a12] px-8 py-3.5 text-base font-semibold text-white shadow-[0_12px_30px_rgba(230,58,18,0.28)] transition hover:bg-[#c92f0d]"
+                    onClick={() => {
+                      setActionHint(null);
+                      fileInput.current?.click();
+                    }}
+                  >
+                    <FilePdfOutlined />&nbsp;
+                    Nộp file
+                  </button>
+                </div>
+              )}
 
               <div className={kiosk ? 'kiosk-action-button' : 'relative'}>
                 {actionHint === 'scan' && (
@@ -862,9 +1027,12 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
             <div className={kiosk ? 'kiosk-scanned-files' : undefined}>
               <ScannedFiles
-                files={visibleScannedFiles}
+                files={displayedScannedFiles}
+                pageNumbers={pageNumbers}
                 selectedFileUrls={focusDocument?.files ?? []}
                 selectedFileColor={focusDocument?.color ?? null}
+                hidePagesFromOtherDocuments={hidePagesFromOtherDocuments}
+                onToggleHidePagesFromOtherDocuments={setHidePagesFromOtherDocuments}
                 onSelectFile={handleSetFileSelectForDocument}
                 onDeleteFile={handleDeleteFile}
                 onPreviewFile={openFilePreview}
@@ -896,6 +1064,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
         zoom={previewZoom}
         onZoomChange={setPreviewZoom}
         onCrop={handleCropFile}
+        onRotate={handleRotateFile}
         onClose={closeFilePreview}
       />
 

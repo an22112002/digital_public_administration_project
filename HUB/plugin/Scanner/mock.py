@@ -35,13 +35,11 @@ def check_naps2_installed(path_to_naps2: str) -> tuple[bool, str]:
 # Lấy danh sách các thiết bị scanner được cài đặt trên hệ thống
 async def get_list_scanner_devices(path_to_naps2: str, type_driver: Literal["wia", "twain", "escl"]) -> list:
     if type_driver == "wia":
-        return ["Mock Scanner 1"]
+        return ["Scanner 1"]
     elif type_driver == "twain":
-        return ["Mock Scanner 2"]
-    elif type_driver == "escl":
-        return ["Mock Scanner 1", "Mock Scanner 2"]
+        return ["Scanner 2"]
     else:
-        return ["Mock Scanner 1", "Mock Scanner 2"]
+        return ["Scanner 1", "Scanner 2"]
 
 async def scan_documents_to_folder(timestamp: int, path_to_naps2: str, output_folder: str, filename: str, device_name: str, driver: Literal["wia", "twain", "escl"], color_mode: Literal["color", "grayscale", "blackwhite"] = "color") -> tuple[ScanStatus, str | None]:
     output_folder_path = Path(output_folder+f"/patch_{timestamp}")

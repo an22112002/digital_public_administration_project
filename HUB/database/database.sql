@@ -30,17 +30,17 @@ CREATE TABLE `service_documents`(
     `realTitle` TEXT NOT NULL,
     `sourceType` ENUM('SCAN', 'FORM') NOT NULL DEFAULT 'SCAN',
     `formKey` CHAR(100) NULL,
-    `sourceRef` CHAR(100) NULL,
-    `active` BOOLEAN NOT NULL DEFAULT 1
+    `sourceRef` CHAR(100) NULL
 );
 CREATE TABLE `scan_requirements`(
     `srID` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `serviceID` BIGINT NOT NULL,
     `code` CHAR(50) NOT NULL,
     `title` VARCHAR(100) NOT NULL,
-    `description` TEXT NULL,
-    `required` BOOLEAN NOT NULL DEFAULT 0,
-    `ocr_enabled` BOOLEAN NOT NULL DEFAULT 0
+    `description` TEXT NULL DEFAULT NULL,
+    `requirementType` ENUM('REQUIRED', 'OPTIONAL', 'OCR_REQUIREMENT', 'CONDITIONAL', 'OCR_REQUIRED_CONDITIONAL') NOT NULL DEFAULT 'OPTIONAL',
+    `ocr_enabled` BOOLEAN NOT NULL DEFAULT 0,
+    `connect` VARCHAR(50) NOT NULL DEFAULT ""
 );
 ALTER TABLE
     `communes` ADD CONSTRAINT `communes_provinceid_foreign` FOREIGN KEY(`provinceID`) REFERENCES `provinces`(`provinceID`) ON DELETE CASCADE;

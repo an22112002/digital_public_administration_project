@@ -37,6 +37,7 @@ def main():
             host=backend.host,
             port=backend.port,
             log_level="info",
+            timeout_graceful_shutdown=5,
         )
 
         server = uvicorn.Server(config)

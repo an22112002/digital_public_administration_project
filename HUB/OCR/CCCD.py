@@ -10,8 +10,7 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     Bạn là AI chuyên đọc giấy tờ tùy thân từ hình ảnh.
 
     NHIỆM VỤ:
-    Đọc tất cả ảnh được cung cấp và trả về DUY NHẤT một JSON hợp lệ theo schema
-    ở cuối.
+    Đọc tất cả ảnh được cung cấp và trả về DUY NHẤT một JSON hợp lệ theo schema ở cuối. Mỗi lần trả lời phải độc lập không suy diễn hay lấy thông tin từ các lần hỏi trước để trả lời cho lần hỏi sau.
 
     ==================================================
     NGUYÊN TẮC CHUNG
@@ -20,7 +19,9 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     - CHỈ lấy thông tin nhìn thấy trực tiếp trên ảnh.
     - Mỗi field phải xác định theo quan hệ:
 
-        NHÃN TRÊN ẢNH -> GIÁ TRỊ CỦA NHÃN
+    MẶT TRƯỚC là mặt có dòng chữ "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"
+
+    NHÃN TRÊN ẢNH -> GIÁ TRỊ CỦA NHÃN
 
     - Luôn tìm NHÃN trước, sau đó lấy giá trị thuộc đúng nhãn đó.
     - Không lấy một giá trị chỉ vì nó nằm ở vị trí có vẻ phù hợp.
@@ -33,69 +34,96 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     - Chỉ sửa lỗi OCR khi hình ảnh cho phép xác định rõ.
 
     ==================================================
-    QUY ƯỚC VỊ TRÍ MẶT THẺ
-    ==================================================
-
-    Đối với CCCD / thẻ căn cước:
-
-    MẶT TRƯỚC:
-    - Chứa ảnh chân dung
-
-    MẶT SAU:
-    - Không có ảnh chân dung
-    - Có mã máy đọc.
-
-    QUAN TRỌNG:
-    "Trước / sau" chỉ dùng để XÁC ĐỊNH NƠI TÌM KIẾM.
-    Không được coi vị trí là bằng chứng thay thế cho nhãn.
-
-    ==================================================
     1. type_document
     ==================================================
+    ĐỊNH NGHĨA: kiểu giấy tờ tùy thân
 
     VỊ TRÍ TÌM:
-    - Cả mặt trước và mặt sau.
+    - Cả mặt trước.
     - Ưu tiên TIÊU ĐỀ ở phần đầu mặt giấy tờ.
+    
+    NHÃN
+    - Thường không có nhãn cụ thể xác định bằng DẤU HIỆU
 
-    NHÃN / DẤU HIỆU:
+    DẤU HIỆU:
     - "CĂN CƯỚC CÔNG DÂN"
-    - "CITIZEN IDENTITY CARD"
-    - "CĂN CƯỚC"
-    - "IDENTITY CARD"
-    - "GIẤY CHỨNG NHẬN CĂN CƯỚC"
-    - "CHỨNG MINH NHÂN DÂN"
-    - "PASSPORT"
+    Suy ra: "thẻ căn cước công dân"
 
-    KẾT QUẢ:
+    - "CĂN CƯỚC"
+    Suy ra: "thẻ căn cước"
+
+    - "HỘ CHIẾU", "PASSPORT"
+    Suy ra: "hộ chiếu"
+
+    - "CHỨNG MINH NHÂN DÂN"
+    Suy ra: "chứng minh nhân dân"
+
+    KẾT QUẢ ĐƯỢC PHÉP TRẢ VỀ:
     "chứng minh nhân dân"
     "thẻ căn cước"
-    "giấy chứng nhận căn cước"
     "hộ chiếu"
     "thẻ căn cước công dân"
     "UNKNOWN"
 
     ==================================================
-    2. fullname
+    2. id_number
     ==================================================
+    ĐỊNH NGHĨA: mã giấy tờ tùy thân
+
+    VỊ TRÍ TÌM:
+    - ƯU TIÊN MẶT TRƯỚC.
+
+    NHÃN:
+    "SỐ CCCD"
+    "SỐ ĐỊNH DANH CÁ NHÂN"
+    "IDENTITY CARD NUMBER"
+    hoặc số 12 chữ số được trình bày ở vị trí số định danh.
+
+    GIÁ TRỊ:
+    - Lấy đúng dãy số thuộc giấy tờ.
+    - 12 chữ số đối với CCCD/thẻ căn cước. Ví dụ: 037202004823
+
+    KHÔNG LẤY:
+    - Số điện thoại.
+    - Số hồ sơ.
+    - Ngày tháng.
+    - Dãy số khác.
+
+    ==================================================
+    3. fullname
+    ==================================================
+    ĐỊNH NGHĨA: họ và tên mà giấy tờ tùy thân đại diện
 
     VỊ TRÍ TÌM:
     - MẶT TRƯỚC.
-    - Khu vực thông tin cá nhân, gần ảnh chân dung.
+    - Khu vực thông tin cá nhân, nằm dưới mã giấy tờ tùy thân - id_number.
 
     NHÃN:
     "HỌ VÀ TÊN"
     "FULL NAME"
 
+    DẤU HIỆU:
+    - Họ tên luôn luôn viết hoa, có dấu 
+    Ví dụ: "NGUYỄN VĂN ANH"
+
     GIÁ TRỊ:
     - Lấy đúng họ tên nằm ngay sau/dưới nhãn.
-    - Giữ nguyên họ tên nhìn thấy trên ảnh.
-
+    - Họ tên được viết hoa, có dấu, không tách ra.
+    
     KHÔNG LẤY:
-    - Tên từ MRZ nếu Họ và tên trên mặt trước rõ ràng.
+    - Họ tên của người ban hành giấy tờ - issue_person -> không lấy
+    - Nếu họ tên chỉ viết hoa chữ cái đầu
+    Ví dụ: "Nguyễn Văn Anh" -> không lấy
+
+    Trường này suy ra thông qua các bước dưới đây:
+    Bước 1: Thu thập tất cả các đoạn chữ giống họ tên người.
+
+    Bước 2: Tìm đoạn đầu tiên mà tất cả các chữ cái đều in hoa và có dấu -> đó là họ tên cần lấy.
 
     ==================================================
-    3. dob
+    4. dob
     ==================================================
+    ĐỊNH NGHĨA: ngày sinh
 
     VỊ TRÍ TÌM:
     - MẶT TRƯỚC.
@@ -115,8 +143,9 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     - Ngày khác trên giấy tờ.
 
     ==================================================
-    4. sex
+    5. sex
     ==================================================
+    ĐỊNH NGHĨA: giới tính
 
     VỊ TRÍ TÌM:
     - MẶT TRƯỚC.
@@ -133,32 +162,73 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     Không suy luận giới tính từ tên.
 
     ==================================================
-    5. id_number
+    6. hometown
     ==================================================
+    ĐỊNH NGHĨA: quê quán của người được giấy tờ tùy thân đại diện
 
     VỊ TRÍ TÌM:
-    - ƯU TIÊN MẶT TRƯỚC.
-    - Tìm số CCCD/số định danh ở khu vực thông tin chính.
+    - có thể ở MẶT TRƯỚC hoặc MẶT SAU
+    - Khu vực thông tin cá nhân.
 
     NHÃN:
-    "SỐ CCCD"
-    "SỐ ĐỊNH DANH CÁ NHÂN"
-    "IDENTITY CARD NUMBER"
-    hoặc số 12 chữ số được trình bày ở vị trí số định danh.
+    "QUÊ QUÁN"
+    "PLACE OF ORIGIN"
+    "NƠI ĐĂNG KÝ KHAI SINH"
+    "PLACE OF BIRTH"
 
     GIÁ TRỊ:
-    - Lấy đúng dãy số thuộc giấy tờ.
-    - 12 chữ số đối với CCCD/thẻ căn cước.
+    - Quê quán có thể bị viết tách ra thành 2 dòng khi quá dài
+    - Quê quán có thể cùng dòng và nằm bên dưới NHÃN của nó nhưng không thể nằm phía trên NHÃN nó
+
+    Ví dụ:
+    Phúc Thành, Ninh Bình
+    QUÊ QUÁN:         Xóm A3
+    Linh Đàm, Thành phố Hà Nội
+
+    Suy ra: Quê quán là "Xóm A3, Linh Đàm, Thành phố Hà Nội"
 
     KHÔNG LẤY:
-    - Số điện thoại.
-    - Số hồ sơ.
-    - Ngày tháng.
-    - Dãy số khác.
+    - "NƠI THƯỜNG TRÚ".
+    - "PLACE OF RESIDENCE".
+    - Địa danh khác chỉ vì nó nằm trên giấy tờ.
+    - Địa danh tự suy ra.
 
     ==================================================
-    6. expiry_date
+    7. address
     ==================================================
+    ĐỊNH NGHĨA: địa chỉ thường trú của người được giấy tờ tùy thân đại diện
+
+    VỊ TRÍ TÌM:
+    - có thể ở MẶT TRƯỚC hoặc MẶT SAU
+    - Khu vực thông tin cư trú.
+
+    NHÃN:
+    "NƠI THƯỜNG TRÚ"
+    "PLACE OF RESIDENCE"
+    "NƠI CƯ TRÚ"
+
+    GIÁ TRỊ:
+    - Nơi cư trú có thể bị viết tách ra thành 2 dòng khi quá dài
+
+    - Nơi cư trú có thể cùng dòng và nằm bên dưới NHÃN của nó nhưng không thể nằm phía trên NHÃN nó
+
+    Ví dụ:
+    Thăng Long, Thành phố Hà Nội
+    NƠI CƯ CHÚ:    Phúc Nam
+    Phúc Thành, Ninh Bình
+
+    Suy ra: Nơi cư trú là: "Phúc Nam, Phúc Thành, Ninh Bình"
+
+    KHÔNG LẤY:
+    - "QUÊ QUÁN".
+    - "PLACE OF ORIGIN".
+    - Địa chỉ chỉ vì nằm ở cuối ảnh.
+    - Địa danh tự suy ra.
+
+    ==================================================
+    8. expiry_date
+    ==================================================
+    ĐỊNH NGHĨA: ngày hết hạn của giấy tờ tùy thân
 
     VỊ TRÍ TÌM:
     - Ưu tiên MẶT TRƯỚC nhưng cũng có thể có ở MẶT SAU.
@@ -170,8 +240,9 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     hoặc nhãn tương đương chỉ rõ thời hạn của giấy tờ.
 
     GIÁ TRỊ:
-    - Chỉ lấy ngày thuộc đúng nhãn ngày hết hạn.
-    - Định dạng dd/mm/yyyy.
+    - Giá trị có thể là ngày cụ thể hoặc chữ
+    - Nếu là ngày trả về định dạng dd/mm/yyyy.
+    - ĐẶC BIỆT đôi khi có thể là "Không giới hạn", "Vô thời hạn". Lúc này trả về "Không giới hạn".
 
     QUAN TRỌNG:
     Không lấy ngày chỉ vì nó nằm ở mặt sau.
@@ -179,8 +250,9 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     "NGÀY HẾT HẠN" -> ngày tương ứng.
 
     ==================================================
-    7. issue_date
+    9. issue_date
     ==================================================
+    ĐỊNH NGHĨA: ngày cấp giấy tờ tùy thân
 
     VỊ TRÍ TÌM:
     - MẶT SAU
@@ -217,8 +289,9 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     -> "UNKNOWN"
 
     ==================================================
-    8. issue_place
+    10. issue_place
     ==================================================
+    ĐỊNH NGHĨA: nơi cấp giấy tờ tùy thân
 
     VỊ TRÍ TÌM:
     - MẶT SAU
@@ -237,7 +310,7 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
 
     Trường này phải suy ra từ lần lượt các bước dưới đây:
 
-    Bước 1: Nếu type_document là "hộ chiếu" thì chắc chắn issue_place = "Cục Quản lý xuất nhập cảnh".
+    Bước 1: Nếu type_document là "hộ chiếu" thì chắc chắn issue_place = "Cục Quản lý xuất nhập cảnh", không cần quan tâm thông tin về nơi cấp trên ảnh.
 
     Bước 2: Nếu có cụm từ "Cục Cảnh sát quản lý hành chính về trật tự xã hội" hoặc "Cục trưởng Cục Cảnh sát quản lý hành chính về trật tự xã hội" thì issue_place = "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
 
@@ -255,52 +328,30 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     - Đổi tên cơ quan thành một tên khác.
 
     ==================================================
-    9. hometown
+    11. issue_person
     ==================================================
+    ĐỊNH NGHĨA: là người ký ban hành giấy tờ tùy thân này
 
     VỊ TRÍ TÌM:
-    - MẶT TRƯỚC.
-    - Khu vực thông tin cá nhân.
+    - MẶT SAU
 
     NHÃN:
-    "QUÊ QUÁN"
-    "PLACE OF ORIGIN"
+    thường không có nhãn
 
-    GIÁ TRỊ:
-    - Chỉ lấy địa danh thuộc đúng nhãn này.
-    - Nếu có nhiều dòng thuộc cùng trường -> ghép bằng dấu phẩy.
+    DẤU HIỆU:
+    - Trường này là tên người chỉ viết hoa chữ cái đầu
+    Ví dụ: "Nguyễn Văn Anh"
+    - Một số người từng ban hành giấy tờ tùy thân có thể xuất hiện:
+    "Phạm Công Nguyen"
+    "Nguyễn Quốc Hùng"
 
-    KHÔNG LẤY:
-    - "NƠI THƯỜNG TRÚ".
-    - "PLACE OF RESIDENCE".
-    - Địa danh khác chỉ vì nó nằm trên giấy tờ.
-    - Địa danh tự suy ra.
-
-    ==================================================
-    10. address
-    ==================================================
-
-    VỊ TRÍ TÌM:
-    - MẶT TRƯỚC.
-    - Khu vực thông tin cư trú.
-
-    NHÃN:
-    "NƠI THƯỜNG TRÚ"
-    "PLACE OF RESIDENCE"
-
-    GIÁ TRỊ:
-    - Chỉ lấy địa chỉ thuộc đúng nhãn này.
-    - Nếu có nhiều dòng thuộc cùng trường -> ghép bằng dấu phẩy.
-
-    KHÔNG LẤY:
-    - "QUÊ QUÁN".
-    - "PLACE OF ORIGIN".
-    - Địa chỉ từ MRZ.
-    - Địa chỉ chỉ vì nằm ở cuối ảnh.
-    - Địa danh tự bổ sung.
+    Trường thông tin này không bắt buộc có thể có hoặc không.
+    Trường thông tin này đã bỏ ở trên các loại giấy tờ tùy thân mới
+    Nếu không tìm thấy tự gán là "UNKNOWN"
+    Không lấy issue_place - nơi cấp làm issue_person
 
     ==================================================
-    11. NGÀY THÁNG
+    12. NGÀY THÁNG
     ==================================================
 
     Tất cả ngày được trả về phải có dạng:
@@ -311,7 +362,7 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
     "22111/2002" -> "22/11/2002"
 
     Chỉ sửa khi hình ảnh xác nhận được giá trị đúng.
-    Không suy đoán.
+    Không suy đoán.    
 
     ==================================================
     12. KIỂM TRA CUỐI
@@ -319,7 +370,7 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
 
     Trước khi trả JSON, kiểm tra từng field:
 
-    FIELD -> NHÃN -> VỊ TRÍ -> GIÁ TRỊ
+    FIELD -> NHÃN/DẤU HIỆU -> VỊ TRÍ -> GIÁ TRỊ
 
     Đặc biệt:
 
@@ -340,6 +391,9 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
 
     address:
     "NƠI THƯỜNG TRÚ" -> địa chỉ thường trú
+    
+    issue_person:
+    "NGƯỜI CẤP" -> người cấp
 
     Nếu không xác định được quan hệ NHÃN -> GIÁ TRỊ:
     -> "UNKNOWN"
@@ -360,11 +414,12 @@ async def CCCD_LLM(images: list[str], server_ip: str) -> dict:
         "dob": "UNKNOWN",
         "sex": "UNKNOWN",
         "id_number": "UNKNOWN",
+        "hometown": "UNKNOWN",
+        "address": "UNKNOWN",
         "expiry_date": "UNKNOWN",
         "issue_date": "UNKNOWN",
         "issue_place": "UNKNOWN",
-        "hometown": "UNKNOWN",
-        "address": "UNKNOWN"
+        "issue_person": "UNKNOWN"
     }
     """
 

@@ -27,7 +27,8 @@ def is_personal_info_filled() -> bool:
         return True
     return False
 
-async def insertSelf(personal_data: dict):
+# điền thông tin cá nhân của người điền form caiChinhHoTich
+async def insertSelf(personal_data: dict, is_self: bool):
     if not all(field in personal_data for field in basic_personal_info_fields):
         print("Dữ liệu form không đầy đủ. Vui lòng cung cấp tất cả các trường cần thiết.")
         return
@@ -44,7 +45,7 @@ async def insertSelf(personal_data: dict):
         ("select", "việt nam"),
         ("text", personal_data["address"])
     ]
-    if personal_data["isSelf"]:
+    if is_self:
         data.append(("checkbox", 1))  
         data.append(("tab", 1))
     else:
@@ -53,6 +54,7 @@ async def insertSelf(personal_data: dict):
         data.append(("tab", 1))
     await formInsert(data)
 
+# điền thông tin cá nhân người được caiChinhHoTich
 async def insertMain(personal_data: dict):
     if not all(field in personal_data for field in basic_personal_info_fields):
         print("Dữ liệu form không đầy đủ. Vui lòng cung cấp tất cả các trường cần thiết.")
@@ -85,18 +87,14 @@ async def formCaiChinhHoTichInsert(form_data: list[dict]):
         # ko có dữ liệu để điền, bỏ qua
         return
     elif len(form_data) == 1:
-        # kiểm tra type
+        # chỉ có 1 người -> vừa là người điền form, vừa là người được caiChinhHoTich
         person = form_data[0]
-        if person["type"] == "cccd_self":
-            await insertSelf(person)  # điền thông tin cá nhân của người điền
-            return
-        elif person["type"] == "cccd_main":
-            await press_key("tab", 18)  # tab đến phần thông tin bổ sung của vợ
-            await insertMain(person)  # điền thông tin cá nhân của người còn lại
-            return
+        await insertSelf(person, is_self=True)  # điền thông tin cá nhân của người điền
+        await insertMain(person)  # điền thông tin cá nhân của người còn lại
+        return
     else:
-        self_person = next((p for p in form_data if p["type"] == "cccd_self"), None)
+        self_person = next((p for p in form_data if p["type"] == "cccd_do"), None)
         main_person = next((p for p in form_data if p["type"] == "cccd_main"), None)
-        await insertSelf(self_person)  # điền thông tin cá nhân của người điền
-        await insertMain(main_person)  # điền thông tin cá nhân của người còn lại
+        await insertSelf(self_person, is_self=False)  # điền thông tin cá nhân của người điền
+        await insertMain(main_person)  # điền thông tin cá nhân của người caiChinhHoTich
             

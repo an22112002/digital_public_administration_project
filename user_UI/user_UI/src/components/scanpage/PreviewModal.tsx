@@ -3,6 +3,7 @@ import { Modal } from 'antd';
 import {
   ScissorOutlined,
   ReloadOutlined,
+  RotateRightOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons';
@@ -14,6 +15,7 @@ interface PreviewModalProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onCrop: (file: ScanFile, position?: [number, number, number, number]) => void;
+  onRotate: (file: ScanFile) => void;
   onClose: () => void;
 }
 
@@ -22,6 +24,7 @@ export default function PreviewModal({
   zoom,
   onZoomChange,
   onCrop,
+  onRotate,
   onClose,
 }: PreviewModalProps) {
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -125,6 +128,16 @@ export default function PreviewModal({
             </button>
             <button
               type="button"
+              onClick={() => onRotate(file)}
+              className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+              title="Xoay ảnh 90 độ theo chiều kim đồng hồ và lưu vào file gốc"
+              aria-label="Xoay ảnh 90 độ theo chiều kim đồng hồ"
+            >
+              <RotateRightOutlined />
+              Xoay phải
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (file) {
                   onCrop(file);
@@ -132,11 +145,11 @@ export default function PreviewModal({
                 }
               }}
               className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-              title="Tự động cắt ảnh này"
-              aria-label="Tự động cắt ảnh này"
+              title="Căt tự động ảnh này"
+              aria-label="Cắt tự động ảnh này"
             >
               <ScissorOutlined />
-              Tự động cắt
+              Cắt tự động
             </button>
             <button
               type="button"

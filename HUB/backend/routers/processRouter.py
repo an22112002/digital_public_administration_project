@@ -48,6 +48,7 @@ process_router = APIRouter(prefix="/process", lifespan=lifespan, tags=["process"
 async def start_process(websocket: WebSocket, service_id: str):
 
     await websocket.accept()
+    timestamp = None
 
     try:
         # đóng gói tạo user task
@@ -56,10 +57,15 @@ async def start_process(websocket: WebSocket, service_id: str):
         server_ip = mode_result.get("server_ip", "localhost")
         timestamp = int(time.time())
         working_timestamps.add(timestamp)
-        service, documents = startProcess(service_id)
-        for doc in documents:
+        service, full_documents = startProcess(service_id)
+        documents = []
+        for doc in full_documents:
             doc["srID"] = str(doc["srID"])
-            doc["required"] = bool(doc["required"])
+            doc["connect"] = doc.get("connect", "").split("|") if doc.get("connect") else []
+            # bỏ qua các tài liệu OCR nếu đang ở chế độ basic
+            if mode == "basic" and doc.get("requirementType") in ["OCR_REQUIREMENT", "OCR_REQUIRED_CONDITIONAL"]:
+                continue
+            documents.append(doc)
         user_task = UserTask(mode=mode, server_ip=server_ip, timestamp=timestamp, websocket=websocket, service=service, required_documents=documents)
 
         # gửi dữ liệu về client qua websocket
@@ -93,7 +99,13 @@ async def start_process(websocket: WebSocket, service_id: str):
     except WebSocketDisconnect:
         print(f"Client disconnected from /start/{service_id}")
     finally:
-        working_timestamps.discard(timestamp)
+        if timestamp is not None:
+            working_timestamps.discard(timestamp)
+
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 # xóa các folder patch cũ sau một khoảng thời gian
 async def cleanup_old_patch_folders():

@@ -497,7 +497,7 @@ def pipeline(
 if __name__ == "__main__":
     try:
 
-        images_path = [r"C:\Users\ADMIN\Pictures\phone\cccd_1.jpg", r"C:\Users\ADMIN\Pictures\phone\cccd_2.jpg"]
+        images_path = [r"C:\Users\ADMIN\Pictures\giay_chung_sinh.jpg"]
 
         results = pipeline(
             images_path

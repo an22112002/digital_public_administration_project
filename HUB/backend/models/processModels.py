@@ -28,9 +28,12 @@ class CropImageRequest(BaseModel):
     image: str
     position: list[int] | None  # [x1, y1, x2, y2]
 
+class RotateImageRequest(BaseModel):
+    image: str
+
 class WebSocketRequest(BaseModel):
-    type: Literal["start_scan", "start_webview", "import_file", "crop_image", "close"]
-    request: StartScanRequest | StartWebViewRequest | ImportFileRequest | CropImageRequest | None
+    type: Literal["start_scan", "start_webview", "import_file", "crop_image", "rotate_image", "close"]
+    request: StartScanRequest | StartWebViewRequest | ImportFileRequest | CropImageRequest | RotateImageRequest | None
 
 class UserTask:
     def __init__(self, mode: str, server_ip: str, timestamp: int, websocket: WebSocket, service: dict, required_documents: list[dict]):

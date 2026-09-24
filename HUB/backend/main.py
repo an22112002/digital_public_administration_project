@@ -738,5 +738,10 @@ class Backend:
 if __name__ == "__main__":
     import uvicorn
     backend = Backend()
-    uvicorn.run(backend.get_app(), host=backend.host, port=backend.port)
+    uvicorn.run(
+        backend.get_app(),
+        host=backend.host,
+        port=backend.port,
+        timeout_graceful_shutdown=5,
+    )
     # uvicorn backend.main:app --host 0.0.0.0 --port 8000 --relo

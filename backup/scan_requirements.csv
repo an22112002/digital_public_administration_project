@@ -1,0 +1,19 @@
+﻿srID,serviceID,code,title,description,required,ocr_enabled
+3,1,d1_1,Bản chính hoặc bản sao có chứng thực, ,0,0
+4,1,d1_2,Dự thảo giao dịch, ,1,0
+5,2,d2_1,Bản chính giấy tờ cần chứng thực cho bản sao, ,1,0
+6,3,d3_1,Giấy tờ văn bản cần chứng thực chữ ký, ,1,0
+7,3,d3_2,Giấy tờ tùy thân,CCCD/Chứng minh nhân dân/Hộ chiếu/Giấy tờ xuất nhập cảnh/Giấy tờ có giá trị đi lại quốc tế còn giá trị sử dụng. Bản chính hoặc bản sao.,0,0
+8,4,cccd_husband,Căn cước công dân của chồng, ,1,1
+9,4,cccd_wife,Căn cước công dân của vợ, ,1,1
+10,4,d4_1,Giấy tờ thông tin cư trú,Giấy tờ có giá trị chứng minh thông tin về cư trú trong trường hợp cơ quan đăng ký hộ tịch không thể khai thác được thông tin về nơi cư trú của công dân,0,0
+11,5,cccd_main,Căn cước công dân người được cải chính hộ tịch, ,1,1
+12,5,cccd_self,Căn cước công dân người thực hiện cải chính, ,1,1
+13,5,d5_1,Giấy tờ liên quan đến thay đổi hộ tịch, ,0,0
+14,5,d5_2,Văn bản ủy quyền,"Trường hợp người được ủy quyền là ông, bà, cha, mẹ, con, vợ, chồng, anh, chị, em ruột của người ủy quyền thì văn bản ủy quyền không phải chứng thực.",0,0
+15,6,cccd_main,Căn cước công dân người cần xác định tình trạng hôn nhân, ,1,1
+16,6,cccd_self,Căn cước công dân người thực hiện xác định, ,1,1
+17,6,d6_1,Bản chính/bản sao giấy tờ xác định tình trạng người vợ/người chồng đã chết/ly hôn,Nếu người cần xác thực đã có vợ/chồng nhưng đã chết/ly hôn,0,0
+18,6,d6_2,Bản sao Trích lục ghi chú ly hôn,"Nếu là công dân Việt Nam đã ly hôn, hủy việc kết hôn ở nước ngoài",0,0
+19,6,d6_3,Giấy xác nhận tình trạng hôn nhân đã được cấp trước đó,Nếu yêu cầu cấp lại Giấy xác nhận tình trạng hôn nhân để sử dụng vào mục đích khác hoặc do Giấy xác nhận tình trạng hôn nhân đã hết thời hạn sử dụng theo quy định,0,0
+20,6,d6_4,Văn bản ủy quyền,"Trường hợp người được ủy quyền là ông, bà, cha, mẹ, con, vợ, chồng, anh, chị, em ruột của người ủy quyền thì văn bản ủy quyền không phải chứng thực.",0,0

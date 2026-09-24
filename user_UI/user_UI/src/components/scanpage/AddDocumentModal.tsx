@@ -39,7 +39,7 @@ export default function AddDocumentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
       <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.2)]">
         <div className="mb-5 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-slate-800">Chọn loại giấy tờ</h3>
+          <h3 className="text-xl font-bold text-slate-800">Chọn loại tài liệu</h3>
           <button
             type="button"
             onClick={onClose}
@@ -52,11 +52,11 @@ export default function AddDocumentModal({
         <div className="space-y-3">
           <div>
             <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Giấy tờ gốc bổ sung
+              Tài liệu gốc bổ sung
             </h4>
             {supplementalTitles.length === 0 ? (
               <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-400">
-                Không có giấy tờ gốc bổ sung
+                Không có tài liệu gốc bổ sung
               </p>
             ) : (
               <div className="space-y-2">
@@ -77,12 +77,12 @@ export default function AddDocumentModal({
 
           <div className="border-t border-slate-200 pt-3">
             <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Giấy tờ bổ sung
+              Tài liệu bổ sung
             </h4>
             <div className="relative mt-2">
               <input
                 type="text"
-                placeholder="Tên giấy tờ"
+                placeholder="Tên tài liệu"
                 value={newDocumentType}
                 onChange={event => onNewDocumentTypeChange(event.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#bd2517]"
@@ -112,7 +112,7 @@ export default function AddDocumentModal({
                 }
               }}
             >
-              + Thêm giấy tờ
+              + Thêm tài liệu
             </button>
           </div>
         </div>

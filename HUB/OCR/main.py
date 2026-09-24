@@ -28,10 +28,10 @@ async def processOCR2(code: str, files: list[str], server_ip: str) -> dict | Non
                 result["type"] = "cccd_wife"
                 print(f"result: {result}")
                 return result
-        if code == "cccd_self":
+        if code == "cccd_do":
             result = await CCCD_LLM(files, server_ip)
             if result is not None:
-                result["type"] = "cccd_self"
+                result["type"] = "cccd_do"
                 print(f"result: {result}")
                 return result
         if code == "cccd_main":

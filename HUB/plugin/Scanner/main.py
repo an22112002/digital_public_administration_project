@@ -48,6 +48,8 @@ async def get_list_scanner_devices(path_to_naps2: str, type_driver: Literal["wia
         # print("NAPS2 stdout:", result.stdout)
         # print("NAPS2 stderr:", result.stderr)
         if result.returncode == 0:
+            if "An unexpected error occurred" in result.stdout:
+                return []
             devices = result.stdout.strip().split('\n')
             devices = [device for device in devices if device]  # Loại bỏ các dòng trống
             return devices

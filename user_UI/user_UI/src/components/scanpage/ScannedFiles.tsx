@@ -4,8 +4,11 @@ import type { ScanFile } from './types';
 
 interface ScannedFilesProps {
   files: ScanFile[];
+  pageNumbers: Record<string, number>;
   selectedFileUrls: string[];
   selectedFileColor: string | null;
+  hidePagesFromOtherDocuments: boolean;
+  onToggleHidePagesFromOtherDocuments: (hidden: boolean) => void;
   onSelectFile: (file: ScanFile) => void;
   onDeleteFile: (file: ScanFile) => void;
   onPreviewFile: (file: ScanFile) => void;
@@ -13,16 +16,29 @@ interface ScannedFilesProps {
 
 export default function ScannedFiles({
   files,
+  pageNumbers,
   selectedFileUrls,
   selectedFileColor,
+  hidePagesFromOtherDocuments,
+  onToggleHidePagesFromOtherDocuments,
   onSelectFile,
   onDeleteFile,
   onPreviewFile,
 }: ScannedFilesProps) {
   return (
     <section className="scanned-files-panel rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5]">
-      <div className="scanned-files-header mb-5 flex items-center justify-between">
+      <div className="scanned-files-header mb-5 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-slate-800">File quét</h2>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+          <span>Ẩn page khác tài liệu</span>
+          <input
+            type="checkbox"
+            checked={hidePagesFromOtherDocuments}
+            onChange={event => onToggleHidePagesFromOtherDocuments(event.target.checked)}
+            className="peer sr-only"
+          />
+          <span className="relative h-5 w-9 rounded-full bg-slate-300 transition peer-checked:bg-[#bd2517] peer-focus-visible:ring-2 peer-focus-visible:ring-[#bd2517]/40 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-4" />
+        </label>
       </div>
 
       {files.length === 0 ? (
@@ -32,9 +48,10 @@ export default function ScannedFiles({
           </div>
         </div>
       ) : (
-        <div className="scanned-files-items grid gap-4 sm:grid-cols-2">
+        <div className="scanned-files-items grid gap-4 p-4 sm:grid-cols-2">
           {files.map((file, index) => {
             const isSelected = selectedFileUrls.includes(file.url);
+            const pageNumber = pageNumbers[file.url] ?? index + 1;
 
             return (
               <div
@@ -42,7 +59,7 @@ export default function ScannedFiles({
                 onClick={() => onSelectFile(file)}
                 className={`cursor-pointer rounded-[18px] border bg-gray-300 p-4 shadow-[0_8px_20px_rgba(15,23,42,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.24)] ${
                   isSelected
-                    ? 'border-[#bd2517] bg-[#fff0eb] shadow-[0_10px_30px_rgba(189,37,23,0.25)] ring-2 ring-[#e63a12]/50'
+                    ? 'border-[#bd2517] bg-[#fff0eb] shadow-[0_0_0_3px_rgba(255,255,255,0.95),0_0_0_7px_rgba(230,58,18,0.5),0_16px_36px_rgba(189,37,23,0.38),inset_0_0_0_2px_rgba(255,255,255,0.8)] ring-2 ring-[#e63a12]/70'
                       : 'border-[#f2d8cc]'
                 }`}
               >
@@ -54,7 +71,7 @@ export default function ScannedFiles({
                     />
                   )}
                   <span className="truncate text-sm font-medium text-slate-600">
-                    {index + 1}
+                    {pageNumber}
                   </span>
                   <span className="shrink-0 font-bold text-xs text-black hover:text-blue-500 text-center">
                     Chọn page
@@ -66,8 +83,8 @@ export default function ScannedFiles({
                       onDeleteFile(file);
                     }}
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-white shadow-sm ring-1 ring-red-100 transition hover:bg-red-50 hover:text-red-600 hover:ring-red-200"
-                    title={`Xóa Page ${index + 1}`}
-                    aria-label={`Xóa Page ${index + 1}`}
+                    title={`Xóa Page ${pageNumber}`}
+                    aria-label={`Xóa Page ${pageNumber}`}
                   >
                     <DeleteOutlined />
                   </button>
@@ -88,12 +105,12 @@ export default function ScannedFiles({
                       onPreviewFile(file);
                     }
                   }}
-                  aria-label={`Xem phóng to Page ${index + 1}`}
+                  aria-label={`Xem phóng to Page ${pageNumber}`}
                 >
                   <img
                     className="h-auto w-full cursor-zoom-in object-contain"
                     src={`${backendUrl}${file.link}`}
-                    alt={`Scanned File Page ${index + 1}`}
+                    alt={`Scanned File Page ${pageNumber}`}
                   />
 
                 </div>

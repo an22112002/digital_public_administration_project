@@ -1,5 +1,5 @@
 ﻿import Header from '../../header/header';
-import aiBootsImage from '../../assets/ai boots.png';
+import aiBootsImage from '../../assets/images/ai boots.png';
 import type { Service } from '../../api/servicesAPI';
 import ServiceBtn from '../../components/serviceBtn';
 import { useEffect, useState } from 'react';

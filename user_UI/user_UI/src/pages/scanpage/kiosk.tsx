@@ -181,7 +181,7 @@ export default function KioskScanPage() {
 
         .kiosk-action-buttons {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           align-items: end;
           gap: 12px;
           flex: 1 1 520px;
@@ -434,6 +434,7 @@ export default function KioskScanPage() {
           .kiosk-document-list > aside {
             padding: 16px;
           }
+
       `}</style>
     </div>
   );

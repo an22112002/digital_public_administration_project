@@ -44,7 +44,7 @@ export default function DocumentList({
               onClick={() => onSelectDocument(doc.srID)}
               className={`cursor-pointer rounded-2xl border bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all ${
                 isFocus
-                  ? 'border-[#bd2517] ring-2 ring-[#bd2517]/30'
+                  ? 'border-[#bd2517] bg-[#fff0e8] shadow-[0_0_0_3px_rgba(255,255,255,0.95),0_0_0_6px_rgba(230,58,18,0.38),0_12px_28px_rgba(189,37,23,0.28)]'
                   : 'border-[#f2d8cc] hover:border-[#e63a12]/60'
               }`}
             >

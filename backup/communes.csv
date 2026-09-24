@@ -1,0 +1,394 @@
+﻿communeID,provinceID,name
+1,1,Phường Ba Đình
+2,1,Phường Ngọc Hà
+3,1,Phường Giảng Võ
+4,1,Phường Hoàn Kiếm
+5,1,Phường Cửa Nam
+6,1,Phường Phú Thượng
+7,1,Phường Hồng Hà
+8,1,Phường Tây Hồ
+9,1,Phường Bồ Đề
+10,1,Phường Việt Hưng
+11,1,Phường Phúc Lợi
+12,1,Phường Long Biên
+13,1,Phường Nghĩa Đô
+14,1,Phường Cầu Giấy
+15,1,Phường Yên Hòa
+16,1,Phường Ô Chợ Dừa
+17,1,Phường Láng
+18,1,Phường Văn Miếu - Quốc Tử Giám
+19,1,Phường Kim Liên
+20,1,Phường Đống Đa
+21,1,Phường Hai Bà Trưng
+22,1,Phường Vĩnh Tuy
+23,1,Phường Bạch Mai
+24,1,Phường Vĩnh Hưng
+25,1,Phường Định Công
+26,1,Phường Tương Mai
+27,1,Phường Lĩnh Nam
+28,1,Phường Hoàng Mai
+29,1,Phường Hoàng Liệt
+30,1,Phường Yên Sở
+31,1,Phường Phương Liệt
+32,1,Phường Khương Đình
+33,1,Phường Thanh Xuân
+34,1,Xã Sóc Sơn
+35,1,Xã Kim Anh
+36,1,Xã Trung Giã
+37,1,Xã Đa Phúc
+38,1,Xã Nội Bài
+39,1,Xã Đông Anh
+40,1,Xã Phúc Thịnh
+41,1,Xã Thư Lâm
+42,1,Xã Thiên Lộc
+43,1,Xã Vĩnh Thanh
+44,1,Xã Phù Đổng
+45,1,Xã Thuận An
+46,1,Xã Gia Lâm
+47,1,Xã Bát Tràng
+48,1,Phường Từ Liêm
+49,1,Phường Thượng Cát
+50,1,Phường Đông Ngạc
+51,1,Phường Xuân Đỉnh
+52,1,Phường Tây Tựu
+53,1,Phường Phú Diễn
+54,1,Phường Xuân Phương
+55,1,Phường Tây Mỗ
+56,1,Phường Đại Mỗ
+57,1,Xã Thanh Trì
+58,1,Phường Thanh Liệt
+59,1,Xã Đại Thanh
+60,1,Xã Ngọc Hồi
+61,1,Xã Nam Phù
+62,1,Xã Yên Xuân
+63,1,Xã Quang Minh
+64,1,Xã Yên Lãng
+65,1,Xã Tiến Thắng
+66,1,Xã Mê Linh
+67,1,Phường Kiến Hưng
+68,1,Phường Hà Đông
+69,1,Phường Yên Nghĩa
+70,1,Phường Phú Lương
+71,1,Phường Sơn Tây
+72,1,Phường Tùng Thiện
+73,1,Xã Đoài Phương
+74,1,Xã Quảng Oai
+75,1,Xã Cổ Đô
+76,1,Xã Minh Châu
+77,1,Xã Vật Lại
+78,1,Xã Bất Bạt
+79,1,Xã Suối Hai
+80,1,Xã Ba Vì
+81,1,Xã Yên Bài
+82,1,Xã Phúc Thọ
+83,1,Xã Phúc Lộc
+84,1,Xã Hát Môn
+85,1,Xã Đan Phượng
+86,1,Xã Liên Minh
+87,1,Xã Ô Diên
+88,1,Xã Hoài Đức
+89,1,Xã Dương Hòa
+90,1,Xã Sơn Đồng
+91,1,Xã An Khánh
+92,1,Phường Dương Nội
+93,1,Xã Quốc Oai
+94,1,Xã Kiều Phú
+95,1,Xã Hưng Đạo
+96,1,Xã Phú Cát
+97,1,Xã Thạch Thất
+98,1,Xã Hạ Bằng
+99,1,Xã Hòa Lạc
+100,1,Xã Tây Phương
+101,1,Phường Chương Mỹ
+102,1,Xã Phú Nghĩa
+103,1,Xã Xuân Mai
+104,1,Xã Quảng Bị
+105,1,Xã Trần Phú
+106,1,Xã Hòa Phú
+107,1,Xã Thanh Oai
+108,1,Xã Bình Minh
+109,1,Xã Tam Hưng
+110,1,Xã Dân Hòa
+111,1,Xã Thường Tín
+112,1,Xã Hồng Vân
+113,1,Xã Thượng Phúc
+114,1,Xã Chương Dương
+115,1,Xã Phú Xuyên
+116,1,Xã Phượng Dực
+117,1,Xã Chuyên Mỹ
+118,1,Xã Đại Xuyên
+119,1,Xã Vân Đình
+120,1,Xã Ứng Thiên
+121,1,Xã Ứng Hòa
+122,1,Xã Hòa Xá
+123,1,Xã Mỹ Đức
+124,1,Xã Phúc Sơn
+125,1,Xã Hồng Sơn
+126,1,Xã Hương Sơn
+127,2,Phường Thủ Dầu Một
+128,2,Phường Phú Lợi
+129,2,Phường Bình Dương
+130,2,Phường Phú An
+131,2,Phường Chánh Hiệp
+132,2,Xã Dầu Tiếng
+133,2,Xã Minh Thạnh
+134,2,Xã Long Hòa
+135,2,Xã Thanh An
+136,2,Phường Bến Cát
+137,2,Xã Trừ Văn Thố
+138,2,Xã Bàu Bàng
+139,2,Phường Chánh Phú Hòa
+140,2,Phường Long Nguyên
+141,2,Phường Tây Nam
+142,2,Phường Thới Hòa
+143,2,Phường Hòa Lợi
+144,2,Xã Phú Giáo
+145,2,Xã Phước Thành
+146,2,Xã An Long
+147,2,Xã Phước Hòa
+148,2,Phường Tân Uyên
+149,2,Phường Tân Khánh
+150,2,Xã Bắc Tân Uyên
+151,2,Xã Thường Tân
+152,2,Phường Vĩnh Tân
+153,2,Phường Bình Cơ
+154,2,Phường Tân Hiệp
+155,2,Phường Dĩ An
+156,2,Phường Tân Đông Hiệp
+157,2,Phường Đông Hòa
+158,2,Phường Lái Thiêu
+159,2,Phường Thuận Giao
+160,2,Phường An Phú
+161,2,Phường Thuận An
+162,2,Phường Bình Hòa
+163,2,Phường Vũng Tàu
+164,2,Phường Tam Thắng
+165,2,Phường  Rạch Dừa
+166,2,Phường Phước Thắng
+167,2,Xã Long Sơn
+168,2,Phường Bà Rịa
+169,2,Phường Long Hương
+170,2,Phường Tam Long
+171,2,Xã Ngãi Giao
+172,2,Xã Xuân Sơn
+173,2,Xã Bình Giã
+174,2,Xã Châu Đức
+175,2,Xã Kim Long
+176,2,Xã Nghĩa Thành
+177,2,Xã Hồ Tràm
+178,2,Xã Xuyên Mộc
+179,2,Xã Bàu Lâm
+180,2,Xã Hòa Hội
+181,2,Xã Hòa Hiệp
+182,2,Xã Bình Châu
+183,2,Xã Long Điền
+184,2,Xã Long Hải
+185,2,Xã Đất Đỏ
+186,2,Xã Phước Hải
+187,2,Phường Phú Mỹ
+188,2,Phường Tân Hải
+189,2,Phường Tân Phước
+190,2,Phường Tân Thành
+191,2,Xã Châu Pha
+192,2,Đặc khu Côn Đảo
+193,2,Phường Tân Định
+194,2,Phường Sài Gòn
+195,2,Phường Bến Thành
+196,2,Phường Cầu Ông Lãnh
+197,2,Phường An Phú Đông
+198,2,Phường Thới An
+199,2,Phường Tân Thới Hiệp
+200,2,Phường Trung Mỹ Tây
+201,2,Phường Đông Hưng Thuận
+202,2,Phường Linh Xuân
+203,2,Phường Tam Bình
+204,2,Phường Hiệp Bình
+205,2,Phường Thủ Đức
+206,2,Phường Long Bình
+207,2,Phường Tăng Nhơn Phú
+208,2,Phường Phước Long
+209,2,Phường Long Phước
+210,2,Phường Long Trường
+211,2,Phường  An Nhơn
+212,2,Phường An Hội Đông
+213,2,Phường An Hội Tây
+214,2,Phường Gò Vấp
+215,2,Phường Hạnh Thông
+216,2,Phường Thông Tây Hội
+217,2,Phường Bình Lợi Trung
+218,2,Phường Bình Quới
+219,2,Phường Bình Thạnh
+220,2,Phường Gia Định
+221,2,Phường Thạnh Mỹ Tây
+222,2,Phường Tân Sơn Nhất
+223,2,Phường Tân Sơn Hòa
+224,2,Phường Bảy Hiền
+225,2,Phường Tân Hòa
+226,2,Phường Tân Bình
+227,2,Phường Tân Sơn
+228,2,Phường Tây Thạnh
+229,2,Phường Tân Sơn Nhì
+230,2,Phường Phú Thọ Hòa
+231,2,Phường Phú Thạnh
+232,2,Phường Tân Phú
+233,2,Phường Đức Nhuận
+234,2,Phường Cầu Kiệu
+235,2,Phường Phú Nhuận
+236,2,Phường An Khánh
+237,2,Phường Bình Trưng
+238,2,Phường Cát Lái
+239,2,Phường Xuân Hòa
+240,2,Phường Nhiêu Lộc
+241,2,Phường Bàn Cờ
+242,2,Phường Hòa Hưng
+243,2,Phường Diên Hồng
+244,2,Phường Vườn Lài
+245,2,Phường Hòa Bình
+246,2,Phường Phú Thọ
+247,2,Phường Bình Thới
+248,2,Phường Minh Phụng
+249,2,Phường Xóm Chiếu
+250,2,Phường Khánh Hội
+251,2,Phường Vĩnh Hội
+252,2,Phường Chợ Quán
+253,2,Phường An Đông
+254,2,Phường Chợ Lớn
+255,2,Phường Phú Lâm
+256,2,Phường Bình Phú
+257,2,Phường Bình Tây
+258,2,Phường Bình Tiên
+259,2,Phường Chánh Hưng
+260,2,Phường Bình Đông
+261,2,Phường Phú Định
+262,2,Phường Bình Hưng Hòa
+263,2,Phường Bình Tân
+264,2,Phường Bình Trị Đông
+265,2,Phường Tân Tạo
+266,2,Phường An Lạc
+267,2,Phường Tân Hưng
+268,2,Phường Tân Thuận
+269,2,Phường Phú Thuận
+270,2,Phường Tân Mỹ
+271,2,Xã Tân An Hội
+272,2,Xã An Nhơn Tây
+273,2,Xã Nhuận Đức
+274,2,Xã Thái Mỹ
+275,2,Xã Phú Hòa Đông
+276,2,Xã Bình Mỹ
+277,2,Xã Củ Chi
+278,2,Xã Hóc Môn
+279,2,Xã Đông Thạnh
+280,2,Xã Xuân Thới Sơn
+281,2,Xã Bà Điểm
+282,2,Xã Tân Nhựt
+283,2,Xã Vĩnh Lộc
+284,2,Xã Tân Vĩnh Lộc
+285,2,Xã Bình Lợi
+286,2,Xã Bình Hưng
+287,2,Xã Hưng Long
+288,2,Xã Bình Chánh
+289,2,Xã Nhà Bè
+290,2,Xã Hiệp Phước
+291,2,Xã Cần Giờ
+292,2,Xã Bình Khánh
+293,2,Xã An Thới Đông
+294,2,Xã Thạnh An
+295,3,Phường Bắc Giang
+296,3,Phường Đa Mai
+297,3,Xã Xuân Lương
+298,3,Xã Tam Tiến
+299,3,Xã Đồng Kỳ
+300,3,Xã Yên Thế
+301,3,Xã Bố Hạ
+302,3,Xã Nhã Nam
+303,3,Xã Phúc Hòa
+304,3,Xã Quang Trung
+305,3,Xã Tân Yên
+306,3,Xã Ngọc Thiện
+307,3,Xã Lạng Giang
+308,3,Xã Tiên Lục
+309,3,Xã Kép
+310,3,Xã Mỹ Thái
+311,3,Xã Tân Dĩnh
+312,3,Xã Lục Nam
+313,3,Xã Đông Phú
+314,3,Xã Bảo Đài
+315,3,Xã Nghĩa Phương
+316,3,Xã Trường Sơn
+317,3,Xã Lục Sơn
+318,3,Xã Bắc Lũng
+319,3,Xã Cẩm Lý
+320,3,Phường Chũ
+321,3,Xã Tân Sơn
+322,3,Xã Sa Lý
+323,3,Xã Biên Sơn
+324,3,Xã Sơn Hải
+325,3,Xã Kiên Lao
+326,3,Xã Biển Động
+327,3,Xã Lục Ngạn
+328,3,Xã Đèo Gia
+329,3,Xã Nam Dương
+330,3,Phường Phượng Sơn
+331,3,Xã Sơn Động
+332,3,Xã Tây Yên Tử
+333,3,Xã Vân Sơn
+334,3,Xã Đại Sơn
+335,3,Xã Yên Định
+336,3,Xã An Lạc
+337,3,Xã Tuấn Đạo
+338,3,Xã Dương Hưu
+339,3,Phường Yên Dũng
+340,3,Phường Tân An
+341,3,Phường Tiền Phong
+342,3,Phường Tân Tiến
+343,3,Xã Đồng Việt
+344,3,Phường Cảnh Thụy
+345,3,Phường Tự Lạn
+346,3,Phường Việt Yên
+347,3,Phường Nếnh
+348,3,Phường Vân Hà
+349,3,Xã Hoàng Vân
+350,3,Xã Hiệp Hoà
+351,3,Xã Hợp Thịnh
+352,3,Xã Xuân Cẩm
+353,3,Phường Vũ Ninh
+354,3,Phường Kinh Bắc
+355,3,Phường Võ Cường
+356,3,Xã Yên Phong
+357,3,Xã Tam Giang
+358,3,Xã Yên Trung
+359,3,Xã Tam Đa
+360,3,Xã Văn Môn
+361,3,Phường Quế Võ
+362,3,Phường Nhân Hòa
+363,3,Phường Phương Liễu
+364,3,Phường Nam Sơn
+365,3,Xã Phù Lãng
+366,3,Phường Bồng Lai
+367,3,Phường Đào Viên
+368,3,Xã Chi Lăng
+369,3,Xã Tiên Du
+370,3,Phường Hạp Lĩnh
+371,3,Xã Liên Bão
+372,3,Xã Đại Đồng
+373,3,Xã Tân Chi
+374,3,Xã Phật Tích
+375,3,Phường Từ Sơn
+376,3,Phường Tam Sơn
+377,3,Phường Phù Khê
+378,3,Phường Đồng Nguyên
+379,3,Phường Thuận Thành
+380,3,Phường Mão Điền
+381,3,Phường Trí Quả
+382,3,Phường Trạm Lộ
+383,3,Phường Song Liễu
+384,3,Phường Ninh Xá
+385,3,Xã Gia Bình
+386,3,Xã Cao Đức
+387,3,Xã Đại Lai
+388,3,Xã Nhân Thắng
+389,3,Xã Đông Cứu
+390,3,Xã Lương Tài
+391,3,Xã Trung Kênh
+392,3,Xã Trung Chính
+393,3,Xã Lâm Thao
