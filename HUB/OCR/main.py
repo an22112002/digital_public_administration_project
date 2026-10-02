@@ -1,4 +1,5 @@
-from OCR.CCCD import CCCD_LLM
+from OCR.paper.CCCD import CCCD_LLM
+from OCR.paper.CNKH import CNKH_LLM
 from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
 from redis.asyncio import Redis
 
@@ -38,6 +39,12 @@ async def processOCR2(code: str, files: list[str], server_ip: str) -> dict | Non
             result = await CCCD_LLM(files, server_ip)
             if result is not None:
                 result["type"] = "cccd_main"
+                print(f"result: {result}")
+                return result
+        if code == "cnkh":
+            result = await CNKH_LLM(files, server_ip)
+            if result is not None:
+                result["type"] = "cnkh"
                 print(f"result: {result}")
                 return result
         # mở rộng cho các loại tài liệu khác nếu cần

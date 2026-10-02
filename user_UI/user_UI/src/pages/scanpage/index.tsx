@@ -18,6 +18,7 @@ import DocumentList from '../../components/scanpage/DocumentList';
 import PreviewModal from '../../components/scanpage/PreviewModal';
 import ScannedFiles from '../../components/scanpage/ScannedFiles';
 import type { DocumentItem, ScanFile, SendFile } from '../../components/scanpage/types';
+import type { SubmissionSet } from '../../components/scanpage/types';
 
 export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const websocket = useRef<WebSocket | null>(null);
@@ -34,9 +35,17 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
   const [serviceName, setServiceName] = useState<string | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [scannedFiles, setScannedFiles] = useState<ScanFile[]>([]);
-  const scannedFilesRef = useRef<ScanFile[]>([]);
-  scannedFilesRef.current = scannedFiles;
+  const [submissionSets, setSubmissionSets] = useState<SubmissionSet[]>([]);
+  const [activeSubmissionSetId, setActiveSubmissionSetId] = useState('set-1');
+  const [isSubmissionCountModalOpen, setIsSubmissionCountModalOpen] = useState(false);
+  const [submissionCount, setSubmissionCount] = useState(1);
+  const [scannedFilesBySubmissionSet, setScannedFilesBySubmissionSet] =
+    useState<Record<string, ScanFile[]>>({});
+  const scannedFilesBySubmissionSetRef = useRef(scannedFilesBySubmissionSet);
+  scannedFilesBySubmissionSetRef.current = scannedFilesBySubmissionSet;
+  const activeSubmissionSetIdRef = useRef(activeSubmissionSetId);
+  activeSubmissionSetIdRef.current = activeSubmissionSetId;
+  const scannedFiles = scannedFilesBySubmissionSet[activeSubmissionSetId] ?? [];
   const [deletedFileUrls, setDeletedFileUrls] = useState<string[]>([]);
   const [hidePagesFromOtherDocuments, setHidePagesFromOtherDocuments] =
     useState(true);
@@ -81,17 +90,41 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
   const normalizeDocumentCode = (code: string) => code.trim().toLocaleLowerCase();
 
-  const selectedOptionalDocuments = documents.filter(
-    doc =>
-      doc.requirementType === 'OPTIONAL' &&
-      selectedSupplementalDocumentIds.includes(doc.srID)
-  );
+  const getVisibleDocumentsForSet = (
+    setDocuments: DocumentItem[],
+    selectedDocumentIds: string[],
+  ) => {
+    const selectedOptionalDocuments = setDocuments.filter(
+      doc =>
+        doc.requirementType === 'OPTIONAL' &&
+        selectedDocumentIds.includes(doc.srID)
+    );
+    const selectedOptionalCodes = new Set(
+      selectedOptionalDocuments
+        .map(doc => normalizeDocumentCode(doc.code))
+        .filter(Boolean)
+    );
 
-  const selectedOptionalCodes = new Set(
-    selectedOptionalDocuments
-      .map(doc => normalizeDocumentCode(doc.code))
-      .filter(Boolean)
-  );
+    return setDocuments.filter(doc => {
+      if (doc.requirementType === 'REQUIRED' || doc.requirementType === 'OCR_REQUIREMENT') {
+        return true;
+      }
+
+      if (doc.requirementType === 'OPTIONAL') {
+        return selectedDocumentIds.includes(doc.srID);
+      }
+
+      if (doc.requirementType === 'CONDITIONAL' || doc.requirementType === 'OCR_REQUIRED_CONDITIONAL') {
+        const documentCode = normalizeDocumentCode(doc.code);
+        return doc.connect.some(code => selectedOptionalCodes.has(normalizeDocumentCode(code))) ||
+          selectedOptionalDocuments.some(optional =>
+            optional.connect.some(code => normalizeDocumentCode(code) === documentCode)
+          );
+      }
+
+      return false;
+    });
+  };
 
   const supplementalDocuments = documents.filter(
     doc =>
@@ -100,25 +133,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       !selectedSupplementalDocumentIds.includes(doc.srID)
   );
 
-  const visibleDocuments = documents.filter(doc => {
-    if (doc.requirementType === 'REQUIRED' || doc.requirementType === 'OCR_REQUIREMENT') {
-      return true;
-    }
-
-    if (doc.requirementType === 'OPTIONAL') {
-      return selectedSupplementalDocumentIds.includes(doc.srID);
-    }
-
-    if (doc.requirementType === 'CONDITIONAL' || doc.requirementType === 'OCR_REQUIRED_CONDITIONAL') {
-      const documentCode = normalizeDocumentCode(doc.code);
-      return doc.connect.some(code => selectedOptionalCodes.has(normalizeDocumentCode(code))) ||
-        selectedOptionalDocuments.some(optional =>
-          optional.connect.some(code => normalizeDocumentCode(code) === documentCode)
-        );
-    }
-
-    return false;
-  });
+  const visibleDocuments = getVisibleDocumentsForSet(documents, selectedSupplementalDocumentIds);
 
   useEffect(() => {
     if (processError) {
@@ -137,15 +152,22 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
     visibleScannedFiles.map((file, index) => [file.url, index + 1])
   );
 
-  const displayedScannedFiles = hidePagesFromOtherDocuments
-    ? visibleScannedFiles.filter(file => {
-      const selectedByOtherDocument = documents.some(doc =>
+  const selectedFileUrlsInOtherSubmissionSets = submissionSets
+    .filter(submissionSet => submissionSet.id !== activeSubmissionSetId)
+    .flatMap(submissionSet => submissionSet.documents)
+    .flatMap(document => document.files ?? []);
+  const displayedScannedFiles = visibleScannedFiles.filter(file => {
+    const selectedByOtherDocument =
+      documents.some(doc =>
         doc.srID !== focusDocumentId && (doc.files ?? []).includes(file.url)
-      );
+      ) || selectedFileUrlsInOtherSubmissionSets.includes(file.url);
 
-      return !selectedByOtherDocument;
-    })
-    : visibleScannedFiles;
+    return !selectedByOtherDocument;
+  });
+  const activeSubmissionSetIndex = Math.max(
+    0,
+    submissionSets.findIndex(submissionSet => submissionSet.id === activeSubmissionSetId)
+  );
 
   // =========================================================
   // WEBSOCKET RECEIVE
@@ -155,6 +177,11 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
     if (data['code'] === '0') {
       // Load danh sách document lần đầu
       setServiceName(data["service"]["title"] ?? null);
+      const serviceAllowsMultiplePush = isMultiPushEnabled(
+        data["service"]["allowMutilPush"] ??
+        data["service"]["allowMultiPush"] ??
+        data["service"]["allow_mutil_push"]
+      );
       const receivedDocuments: DocumentItem[] = data['documents'] ?? [];
 
       const newDocuments = receivedDocuments.map(
@@ -166,6 +193,16 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       );
 
       setDocuments(newDocuments);
+      setSubmissionSets([{
+        id: 'set-1',
+        documents: newDocuments,
+        selectedSupplementalDocumentIds: [],
+      }]);
+      setScannedFilesBySubmissionSet({ 'set-1': [] });
+      setDeletedFileUrls([]);
+      setActiveSubmissionSetId('set-1');
+      setSubmissionCount(1);
+      setIsSubmissionCountModalOpen(serviceAllowsMultiplePush);
 
       // Nếu chưa có document nào được chọn
       // thì chọn document đầu tiên
@@ -206,12 +243,17 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
         .map(imagePath => createScanFileFromPath(imagePath))
         .filter((file: ScanFile | null): file is ScanFile => file !== null);
       if (croppedImages.length > 0) {
-        setScannedFiles(previousFiles => {
+        setScannedFilesBySubmissionSet(previousFilesBySet => {
+          const setId = activeSubmissionSetIdRef.current;
+          const previousFiles = previousFilesBySet[setId] ?? [];
           const existingUrls = new Set(previousFiles.map(file => file.url));
-          return [
-            ...previousFiles,
-            ...croppedImages.filter(file => !existingUrls.has(file.url)),
-          ];
+          return {
+            ...previousFilesBySet,
+            [setId]: [
+              ...previousFiles,
+              ...croppedImages.filter(file => !existingUrls.has(file.url)),
+            ],
+          };
         });
       }
       return;
@@ -231,16 +273,22 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       if (targetUrl) {
         const cacheBust = Date.now();
 
-        setScannedFiles(previousFiles => previousFiles.map(file => {
-          if (file.url !== targetUrl) {
-            return file;
-          }
-
+        setScannedFilesBySubmissionSet(previousFilesBySet => {
+          const setId = activeSubmissionSetIdRef.current;
           return {
-            ...file,
-            link: `${file.link.split('?')[0]}?v=${cacheBust}`,
+            ...previousFilesBySet,
+            [setId]: (previousFilesBySet[setId] ?? []).map(file => {
+              if (file.url !== targetUrl) {
+                return file;
+              }
+
+              return {
+                ...file,
+                link: `${file.link.split('?')[0]}?v=${cacheBust}`,
+              };
+            }),
           };
-        }));
+        });
 
         setPreviewFile(previousFile => {
           if (!previousFile || previousFile.url !== targetUrl) {
@@ -278,7 +326,9 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
           setScanError(null);
           const images: ScanFile[] = data['images'] ?? [];
           const existingFileUrls = new Set(
-            scannedFilesRef.current.map(file => file.url)
+            Object.values(scannedFilesBySubmissionSetRef.current)
+              .flat()
+              .map(file => file.url)
           );
           const newlyScannedImages = images.filter(
             image => !existingFileUrls.has(image.url)
@@ -286,7 +336,10 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
           // Không thêm colors vào scannedFiles nữa.
           // Màu sẽ được tính dựa trên documents.
-          setScannedFiles(images);
+          setScannedFilesBySubmissionSet(previousFilesBySet => ({
+            ...previousFilesBySet,
+            [activeSubmissionSetIdRef.current]: images,
+          }));
 
           const currentFocusDocumentId = focusDocumentIdRef.current;
 
@@ -341,7 +394,10 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
           // Không thêm colors vào scannedFiles nữa.
           // Màu sẽ được tính dựa trên documents.
-          setScannedFiles(images);
+          setScannedFilesBySubmissionSet(previousFilesBySet => ({
+            ...previousFilesBySet,
+            [activeSubmissionSetIdRef.current]: images,
+          }));
 
           console.log('Scan successful');
           break;
@@ -388,16 +444,14 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       files: [],
       color: getFileColorFromIndex(documents.length),
     };
+    const updatedDocuments = [...documents, newDocumentItem];
+    const selectedIds = [...selectedSupplementalDocumentIds, newDocumentItem.srID];
 
-    setDocuments(prev => [
-      ...prev,
-      newDocumentItem,
-    ]);
-
-    setSelectedSupplementalDocumentIds(prev => [
-      ...prev,
-      newDocumentItem.srID,
-    ]);
+    setDocuments(updatedDocuments);
+    setSelectedSupplementalDocumentIds(selectedIds);
+    setSubmissionSets(prev => prev.map(submissionSet => submissionSet.id === activeSubmissionSetId
+      ? { ...submissionSet, documents: updatedDocuments, selectedSupplementalDocumentIds: selectedIds }
+      : submissionSet));
 
     // Focus document mới
     setFocusDocumentId(newDocumentItem.srID);
@@ -547,17 +601,26 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
       return;
     }
 
-    const sendFiles: SendFile[] = visibleDocuments.map(
-      doc => ({
-        srID: doc.srID,
-        files: doc.files ?? [],
-      })
-    );
+    const currentSubmissionSet: SubmissionSet = {
+      id: activeSubmissionSetId,
+      documents,
+      selectedSupplementalDocumentIds,
+    };
+    const currentSets = submissionSets.some(set => set.id === activeSubmissionSetId)
+      ? submissionSets.map(set => set.id === activeSubmissionSetId ? currentSubmissionSet : set)
+      : [...submissionSets, currentSubmissionSet];
+    const sendData = currentSets.map(submissionSet => ({
+      files: getVisibleDocumentsForSet(
+        submissionSet.documents,
+        submissionSet.selectedSupplementalDocumentIds,
+      )
+        .map<SendFile>(doc => ({ srID: doc.srID, files: doc.files ?? [] })),
+    }));
 
     const requestData = {
       type: 'start_webview',
       request: {
-        files: sendFiles,
+        data: sendData,
       },
     };
 
@@ -575,6 +638,50 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
         'WebSocket is not connected'
       );
     }
+  };
+
+  const handleConfirmSubmissionCount = () => {
+    const count = Math.max(1, Math.floor(submissionCount || 1));
+    const baseDocuments = documents.map(document => ({ ...document, files: [] }));
+    const newSubmissionSets = Array.from({ length: count }, (_, index) => ({
+      id: `set-${index + 1}`,
+      documents: baseDocuments.map(document => ({ ...document })),
+      selectedSupplementalDocumentIds: [],
+    }));
+    const firstSet = newSubmissionSets[0];
+
+    setSubmissionSets(newSubmissionSets);
+    setScannedFilesBySubmissionSet(
+      Object.fromEntries(newSubmissionSets.map(submissionSet => [submissionSet.id, []]))
+    );
+    setActiveSubmissionSetId(firstSet.id);
+    setDocuments(firstSet.documents);
+    setSelectedSupplementalDocumentIds([]);
+    setFocusDocumentId(firstSet.documents.find(doc => doc.requirementType === 'REQUIRED' || doc.requirementType === 'OCR_REQUIREMENT')?.srID ?? null);
+    setSubmissionCount(count);
+    setIsSubmissionCountModalOpen(false);
+  };
+
+  const handleSwitchSubmissionSet = (nextIndex: number) => {
+    if (nextIndex < 0 || nextIndex >= submissionSets.length) {
+      return;
+    }
+
+    const currentSet = {
+      id: activeSubmissionSetId,
+      documents,
+      selectedSupplementalDocumentIds,
+    };
+    const updatedSets = submissionSets.map(submissionSet =>
+      submissionSet.id === activeSubmissionSetId ? currentSet : submissionSet
+    );
+    const nextSet = updatedSets[nextIndex];
+
+    setSubmissionSets(updatedSets);
+    setActiveSubmissionSetId(nextSet.id);
+    setDocuments(nextSet.documents);
+    setSelectedSupplementalDocumentIds(nextSet.selectedSupplementalDocumentIds);
+    setFocusDocumentId(nextSet.documents.find(doc => doc.requirementType === 'REQUIRED' || doc.requirementType === 'OCR_REQUIREMENT')?.srID ?? null);
   };
 
   const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -815,6 +922,42 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
   return (
     <div className="min-h-screen bg-[#fff7f0] px-4 py-8 text-slate-800">
+      <Modal
+        open={isSubmissionCountModalOpen}
+        title="Số lượng hồ sơ cần nộp"
+        okText="OK"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        closable={false}
+        maskClosable={false}
+        onOk={handleConfirmSubmissionCount}
+      >
+        <p className="mb-3 text-sm text-slate-600">
+          Dịch vụ này cho phép nộp nhiều hồ sơ trong một lần. Vui lòng nhập số hồ sơ.
+        </p>
+        <div className="flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => setSubmissionCount(count => Math.max(1, count - 1))}
+            disabled={submissionCount <= 1}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#f2c7b8] bg-white text-xl font-bold text-[#921507] transition hover:bg-[#fff0e8] disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Giảm số hồ sơ"
+          >
+            −
+          </button>
+          <span className="min-w-12 text-center text-2xl font-bold text-[#921507]">
+            {submissionCount}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSubmissionCount(count => count + 1)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#f2c7b8] bg-white text-xl font-bold text-[#921507] transition hover:bg-[#fff0e8]"
+            aria-label="Tăng số hồ sơ"
+          >
+            +
+          </button>
+        </div>
+      </Modal>
+
       <Modal 
         open={isInProcess} footer={null} closable={false} centered>
         <div className="flex flex-col items-center gap-4">
@@ -983,7 +1126,7 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
                     Nộp file
                   </button>
                 </div>
-              )}
+              )} 
 
               <div className={kiosk ? 'kiosk-action-button' : 'relative'}>
                 {actionHint === 'scan' && (
@@ -1048,7 +1191,11 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
                 documents={visibleDocuments}
                 scannedFiles={visibleScannedFiles}
                 focusDocumentId={focusDocumentId}
+                submissionSetIndex={activeSubmissionSetIndex}
+                submissionSetCount={submissionSets.length}
                 onSelectDocument={setFocusDocumentId}
+                onPreviousSubmissionSet={() => handleSwitchSubmissionSet(activeSubmissionSetIndex - 1)}
+                onNextSubmissionSet={() => handleSwitchSubmissionSet(activeSubmissionSetIndex + 1)}
                 onOpenAddDocument={() => setIsModalOpen(true)}
               />
             </div>
@@ -1104,6 +1251,10 @@ function getFileColorFromIndex(
   return colors[
     index % colors.length
   ];
+}
+
+function isMultiPushEnabled(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 function createScanFileFromPath(

@@ -22,3 +22,9 @@ class SetLLMSettingRequest(BaseModel):
 
 class SetUIUserRequest(BaseModel):
     ui: Literal["desktop", "kiosk"]
+
+class SetAllowMutilPushRequest(BaseModel):
+    active: bool
+
+class SetAutoStartRequest(BaseModel):
+    active: bool

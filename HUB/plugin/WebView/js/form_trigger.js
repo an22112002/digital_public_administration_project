@@ -4,8 +4,8 @@
     const sleep = (ms) =>
         new Promise(resolve => setTimeout(resolve, ms));
 
-    const data = FORM_DATA;
-    const type = FORM_TYPE;
+    const FORM_DATA = __FORM_DATA__;
+    const type = __FORM_TYPE__;
 
     // =====================================================
     // Tạo box điều khiển
@@ -95,6 +95,16 @@
                 window.pywebview.api.log(
                     "User kích hoạt nhập form"
                 );
+
+                const index = await window.pywebview.api.get_current_index();
+
+                const data = FORM_DATA[index];
+
+                if (data === undefined) {
+                    throw new Error(
+                        `Không tìm thấy FORM_DATA tại index ${index}`
+                    );
+                }
 
                 const fillResult = await window.pywebview.api.form_fill(
                     data,

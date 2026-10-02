@@ -1,7 +1,6 @@
 import requests
 import subprocess
 from backend.config import open_settings
-from backend.utils import image_to_base64
 
 async def getLMStudioModels() -> list:
     """
@@ -71,20 +70,19 @@ async def unloadLocalLMStudioModel():
         print(f"[LM Studio] Error occurred while unloading model: {e}")
         raise
 
-async def runPromptInLMStudio(prompt: str, images: list, server_ip: str) -> str:
+async def runPromptInLMStudio(prompt: str, images_base64: list, server_ip: str) -> str:
     """
     Gửi prompt đến LM Studio server và nhận phản hồi.
     """
 
     # Chuyển đổi hình ảnh sang base64
     images_data = []
-    for image in images:
-        data = image_to_base64(image, max_size=1600)
+    for image_base64 in images_base64:
         images_data.append(
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": "data:image/jpeg;base64," + data
+                    "url": "data:image/jpeg;base64," + image_base64
                 }
             }
         )

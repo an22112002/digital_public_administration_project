@@ -120,10 +120,21 @@
             window.pywebview.api.destroy();
         };
 
+
+        // nút skip dùng để debug
+        // const btnSkip = document.createElement("button");
+        // btnSkip.textContent = "Skip";
+        // btnSkip.onclick = () => {
+        //     window.pywebview.api.finish();
+        // }
+        // tools.appendChild(btnSkip);
+        //
+
         tools.appendChild(btnBack);
         tools.appendChild(btnForward);
         tools.appendChild(btnReload);
         tools.appendChild(btnClose);
+        
 
         document.body.appendChild(tools);
 

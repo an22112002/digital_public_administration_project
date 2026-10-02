@@ -18,6 +18,14 @@ export interface UIResponse {
     ui: "desktop" | "kiosk";
 }
 
+export interface AllowMutilPushResponse {
+    allowMutilPush: boolean;
+}
+
+interface AutoStartResponse {
+    status: string;
+}
+
 interface ProvinceOption {
     name: string;
     id: string;
@@ -103,5 +111,18 @@ export async function getUI() {
 
 export async function saveUI(ui: UIResponse["ui"]) {
     const response = await HUB_api.put("/settings/ui-user", { ui: ui });
+    return response.data as UpdateResponse;
+}
+
+export async function getAutoStartState() {
+    const response = await HUB_api.get("/settings/auto-start");
+    const data = response.data as AutoStartResponse;
+    const status = data.status === "true" ? true : false;
+
+    return { status };
+}
+
+export async function saveAutoStartState(status: boolean) {
+    const response = await HUB_api.put("/settings/auto-start", { active: status });
     return response.data as UpdateResponse;
 }

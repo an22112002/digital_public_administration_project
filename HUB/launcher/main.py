@@ -4,10 +4,11 @@ import threading
 import uvicorn
 
 from backend.main import Backend
+from launcher.startup import StartupGuard
 from launcher.tray import TrayApp
 
 
-def run_backend(backend: Backend, server: uvicorn.Server):
+def run_backend(backend: Backend, server: uvicorn.Server, tray: TrayApp):
 
     print("[BACKEND] Starting Uvicorn...")
     try:
@@ -16,11 +17,18 @@ def run_backend(backend: Backend, server: uvicorn.Server):
     except SystemExit:
         print("[MAIN] Exiting all")
         os._exit(0)        
+    finally:
+        tray.set_status(TrayApp.STATUS_CLOSING)
 
     print("[BACKEND] Uvicorn stopped")
 
 
 def main():
+    startup_guard = StartupGuard()
+
+    if not startup_guard.acquire():
+        return
+
     try:
 
         # ==============================
@@ -42,13 +50,16 @@ def main():
 
         server = uvicorn.Server(config)
 
+        tray = TrayApp(server)
+        backend.on_started = lambda: tray.set_status(TrayApp.STATUS_RUNNING)
+
         # ==============================
         # Backend thread
         # ==============================
 
         backend_thread = threading.Thread(
             target=run_backend,
-            args=(backend, server),
+            args=(backend, server, tray),
             daemon=True,
         )
 
@@ -58,8 +69,6 @@ def main():
         # Tray
         # ==============================
 
-        tray = TrayApp(server)
-
         tray.run()
 
         # ==============================
@@ -67,9 +76,14 @@ def main():
         # ==============================
 
         backend_thread.join()
+
     except SystemExit:
         print("[MAIN] Exiting...")
         exit(0)
+    finally:
+        if "tray" in locals():
+            tray.set_status(TrayApp.STATUS_CLOSING)
+        startup_guard.release()
 
 if __name__ == "__main__":
     import multiprocessing

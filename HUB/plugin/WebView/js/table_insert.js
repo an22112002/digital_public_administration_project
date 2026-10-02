@@ -1,7 +1,5 @@
 (async () => {
 
-    const papers = PAPERS_DATA;
-
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     async function waitUntilReady() {{
@@ -213,7 +211,28 @@
 
     async function syncTable() {{
 
+        window.pywebview.api.log(__PAPERS_DATA__);
+
         await waitUntilReady();
+
+        // Lấy index hiện tại từ Python
+        const index = await window.pywebview.api.get_current_index();
+
+        window.pywebview.api.log(
+            "Current index:",
+            index
+        );
+
+        // Lấy danh sách hồ sơ tương ứng với index
+        const papers = __PAPERS_DATA__[index];
+
+        if (!papers) {{
+            window.pywebview.api.log(
+                "Không tìm thấy PAPERS_DATA tại index:",
+                index
+            );
+            return;
+        }}
 
         const existed = new Map();
 

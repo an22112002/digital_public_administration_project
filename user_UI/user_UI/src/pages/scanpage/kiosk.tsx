@@ -105,6 +105,7 @@ export default function KioskScanPage() {
           margin: 0 auto;
           max-width: 1440px;
           border-radius: 18px;
+          overflow: hidden;
         }
 
         .kiosk-document-list .document-list-header {
@@ -112,9 +113,13 @@ export default function KioskScanPage() {
         }
 
         .kiosk-document-list .document-list-items {
+          flex: 1 1 0;
           min-height: 0;
+          height: 0;
+          overflow-x: hidden;
           overflow-y: auto;
           padding-right: 4px;
+          overscroll-behavior: contain;
         }
 
         .kiosk-scanned-files {
@@ -142,6 +147,7 @@ export default function KioskScanPage() {
           min-height: 0;
           height: 0;
           max-height: 100%;
+          overflow-x: hidden;
           overflow-y: auto;
           padding-right: 4px;
           grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -423,6 +429,7 @@ export default function KioskScanPage() {
             max-height: none;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             align-content: start;
+            overflow-x: hidden;
             overflow-y: auto;
           }
 
@@ -432,7 +439,20 @@ export default function KioskScanPage() {
           }
 
           .kiosk-document-list > aside {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
             padding: 16px;
+            overflow: hidden;
+          }
+
+          .kiosk-document-list .document-list-items {
+            flex: 1 1 0;
+            min-height: 0;
+            height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior: contain;
           }
 
       `}</style>

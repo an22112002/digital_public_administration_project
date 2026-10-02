@@ -11,16 +11,28 @@ import asyncio
 
 class TrayApp:
 
+    STATUS_STARTING = "Đang khởi động"
+    STATUS_RUNNING = "Đang chạy"
+    STATUS_CLOSING = "Đang đóng"
+
     def __init__(self, server):
         self.server = server
         self.icon = None
         self.ip = "localhost"
+        self.status = self.STATUS_STARTING
+
+    def set_status(self, status):
+        self.status = status
+        if self.icon:
+            self.icon.update_menu()
+
+    def status_label(self, item):
+        return f"Trạng thái: {self.status}"
 
     def open_admin_ui(self, icon, item):
         webbrowser.open(
             f"http://{self.ip}:5173"
         )
-
 
     def open_user_ui(self, icon, item):
         settings_data = asyncio.run(open_settings())
@@ -33,6 +45,7 @@ class TrayApp:
 
     def quit(self, icon, item):
         print("Stopping HUB...")
+        self.set_status(self.STATUS_CLOSING)
 
         # Stop FastAPI
         self.server.should_exit = True
@@ -46,9 +59,13 @@ class TrayApp:
         image = Image.open(icon_path)
 
         menu = pystray.Menu(
-            MenuItem("Mở giao diện quản trị", self.open_admin_ui),
-            MenuItem("Mở giao diện người dùng", self.open_user_ui),
-            MenuItem("Dừng", self.quit)
+            MenuItem("🛠    Mở giao diện quản trị", self.open_admin_ui),
+            pystray.Menu.SEPARATOR,
+            MenuItem("👤    Mở giao diện người dùng", self.open_user_ui),
+            pystray.Menu.SEPARATOR,
+            MenuItem(self.status_label, None, enabled=False),
+            pystray.Menu.SEPARATOR,
+            MenuItem("⏻    Dừng", self.quit),
         )
 
         self.icon = pystray.Icon(

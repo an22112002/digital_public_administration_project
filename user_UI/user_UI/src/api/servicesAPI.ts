@@ -5,6 +5,7 @@ export interface Service {
     title: string
     realTitle: string
     category: string
+    allowMutilPush?: boolean
 }
 
 export async function getServicesList(category?: string, title?: string) {

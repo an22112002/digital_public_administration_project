@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getTitle, saveTitle, getProvince, getCommune, listProvince, listCommune, getSelfIP, saveNewPosition, getUI, saveUI } from "../../api/settingAPI";
+import { getTitle, saveTitle, getProvince, getCommune, listProvince, listCommune, getSelfIP, saveNewPosition, getUI, saveUI, getAutoStartState, saveAutoStartState } from "../../api/settingAPI";
 import type { ProvinceListResponse, CommuneListResponse, UIResponse } from "../../api/settingAPI";
 
 export default function InfoPage() {
@@ -18,6 +18,8 @@ export default function InfoPage() {
     const [isLoadingCommunes, setIsLoadingCommunes] = useState(false);
     const [ui, setUI] = useState<UIResponse["ui"]>("desktop");
     const [isSavingUI, setIsSavingUI] = useState(false);
+    const [autoStart, setAutoStart] = useState(false);
+    const [isSavingAutoStart, setIsSavingAutoStart] = useState(false);
 
     const fetchTitle = async () => {
         const response = await getTitle();
@@ -27,6 +29,11 @@ export default function InfoPage() {
     const fetchSelfIP = async () => {
         const response = await getSelfIP();
         setMachineIp(response.self_ip);
+    }
+
+    const fetchAutoStartState = async () => {
+        const response = await getAutoStartState();
+        setAutoStart(response.status);
     }
 
     const load = async () => {
@@ -58,6 +65,7 @@ export default function InfoPage() {
     useEffect(() => {
         fetchTitle();
         fetchSelfIP();
+        fetchAutoStartState();
         load();
         getUI().then((response) => setUI(response.ui)).catch(() => undefined);
     }, []);
@@ -73,6 +81,22 @@ export default function InfoPage() {
             }
         } finally {
             setIsSavingUI(false);
+        }
+    };
+
+    const handleAutoStartChange = async (nextAutoStart: boolean) => {
+        if (nextAutoStart === autoStart) return;
+
+        setIsSavingAutoStart(true);
+        try {
+            const response = await saveAutoStartState(nextAutoStart);
+            if (response.success) {
+                setAutoStart(nextAutoStart);
+            }
+        } catch (error) {
+            console.error("Error saving auto start state:", error);
+        } finally {
+            setIsSavingAutoStart(false);
         }
     };
 
@@ -215,7 +239,7 @@ export default function InfoPage() {
                         <button type="button" className="mt-2 w-[20%] rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400" onClick={() => { navigator.clipboard.writeText(machineIp);}}>Sao chép địa chỉ IP</button>
                     </div>
                 </div>
-                <div className="flex flex-col gap-5 border-t border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <div className="flex flex-col gap-5 border-t border-slate-100 px-5 py-5 sm:px-7">
                     <div className="flex flex-col gap-2">
                         <p className="text-sm font-semibold text-slate-600">Giao diện</p>
                         <div className="mt-2 inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Chọn giao diện">
@@ -228,6 +252,23 @@ export default function InfoPage() {
                                     className={`rounded-lg px-4 py-2 text-sm font-bold transition ${ui === option ? "bg-cyan-500 text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                                 >
                                     {option === "desktop" ? "Desktop" : "Kiosk"}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold text-slate-600">Tự động khởi động</p>
+                        <div className="mt-2 inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Chọn trạng thái tự động khởi động">
+                            {([true, false] as const).map((option) => (
+                                <button
+                                    key={option.toString()}
+                                    type="button"
+                                    disabled={isSavingAutoStart}
+                                    onClick={() => void handleAutoStartChange(option)}
+                                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${autoStart === option ? "bg-cyan-500 text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                                >
+                                    {option ? "Bật" : "Tắt"}
                                 </button>
                             ))}
                         </div>

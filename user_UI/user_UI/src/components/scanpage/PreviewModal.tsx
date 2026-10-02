@@ -30,22 +30,17 @@ export default function PreviewModal({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [isManualCrop, setIsManualCrop] = useState(false);
   const [selection, setSelection] = useState<{
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
+    topRight: { x: number; y: number };
+    bottomLeft: { x: number; y: number };
   } | null>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [touchCropStep, setTouchCropStep] = useState<0 | 1 | 2>(0);
+  const [draggingPoint, setDraggingPoint] = useState<'topRight' | 'bottomLeft' | null>(null);
 
   useEffect(() => {
     setIsManualCrop(false);
     setSelection(null);
-    setIsSelecting(false);
-    setTouchCropStep(0);
   }, [file]);
 
-  const getImagePoint = (event: React.PointerEvent<HTMLImageElement>) => {
+  const getImagePoint = (event: React.PointerEvent<HTMLElement>) => {
     const image = imageRef.current;
     if (!image) return null;
     const bounds = image.getBoundingClientRect();
@@ -58,10 +53,10 @@ export default function PreviewModal({
   const getSelectionStyle = () => {
     if (!selection) return undefined;
     return {
-      left: Math.min(selection.startX, selection.endX),
-      top: Math.min(selection.startY, selection.endY),
-      width: Math.abs(selection.endX - selection.startX),
-      height: Math.abs(selection.endY - selection.startY),
+      left: selection.bottomLeft.x,
+      top: selection.topRight.y,
+      width: selection.topRight.x - selection.bottomLeft.x,
+      height: selection.bottomLeft.y - selection.topRight.y,
     };
   };
 
@@ -69,10 +64,10 @@ export default function PreviewModal({
     if (!file || !selection || !imageRef.current) return;
     const image = imageRef.current;
     const bounds = image.getBoundingClientRect();
-    const left = Math.min(selection.startX, selection.endX);
-    const top = Math.min(selection.startY, selection.endY);
-    const right = Math.max(selection.startX, selection.endX);
-    const bottom = Math.max(selection.startY, selection.endY);
+    const left = selection.bottomLeft.x;
+    const top = selection.topRight.y;
+    const right = selection.topRight.x;
+    const bottom = selection.bottomLeft.y;
     const position: [number, number, number, number] = [
       Math.round(left * image.naturalWidth / bounds.width),
       Math.round(top * image.naturalHeight / bounds.height),
@@ -155,8 +150,14 @@ export default function PreviewModal({
               type="button"
               onClick={() => {
                 setIsManualCrop(true);
-                setSelection(null);
-                setTouchCropStep(0);
+                const image = imageRef.current;
+                if (image) {
+                  const bounds = image.getBoundingClientRect();
+                  setSelection({
+                    topRight: { x: bounds.width * 0.9, y: bounds.height * 0.1 },
+                    bottomLeft: { x: bounds.width * 0.1, y: bounds.height * 0.9 },
+                  });
+                }
               }}
               className={`inline-flex h-9 items-center justify-center gap-1 rounded-lg border px-3 text-sm font-medium transition ${isManualCrop ? 'border-[#28a9a9] bg-[#e8f8f7] text-[#168888]' : 'border-slate-200 text-slate-600 hover:bg-slate-100'}`}
               title="Chọn vùng để cắt thủ công"
@@ -170,7 +171,7 @@ export default function PreviewModal({
                 <button
                   type="button"
                   onClick={handleManualCrop}
-                  disabled={!selection || touchCropStep === 1}
+                  disabled={!selection}
                   className="inline-flex h-9 items-center justify-center gap-1 rounded-lg bg-[#28a9a9] px-3 text-sm font-medium text-white transition hover:bg-[#219a9a] disabled:cursor-not-allowed disabled:opacity-40"
                   title="Gửi vùng đã chọn để cắt"
                 >
@@ -179,8 +180,14 @@ export default function PreviewModal({
                 <button
                   type="button"
                   onClick={() => {
-                    setSelection(null);
-                    setTouchCropStep(0);
+                    const image = imageRef.current;
+                    if (image) {
+                      const bounds = image.getBoundingClientRect();
+                      setSelection({
+                        topRight: { x: bounds.width * 0.9, y: bounds.height * 0.1 },
+                        bottomLeft: { x: bounds.width * 0.1, y: bounds.height * 0.9 },
+                      });
+                    }
                   }}
                   className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
                   title="Chọn lại vùng cắt"
@@ -193,7 +200,7 @@ export default function PreviewModal({
 
           {isManualCrop && (
             <p className="text-center text-sm text-slate-500">
-              Trên màn hình cảm ứng: chạm góc trên-trái, sau đó chạm góc dưới-phải của vùng cần cắt.
+              Kéo chấm trên-phải và dưới-trái để chọn vùng cần cắt.
             </p>
           )}
 
@@ -205,41 +212,62 @@ export default function PreviewModal({
                 alt="Xem chi tiết scanned file"
                 className={`h-auto max-w-none origin-top object-contain transition-transform duration-200 ${isManualCrop ? 'cursor-crosshair' : ''}`}
                 draggable={false}
-                style={{ width: `${zoom * 100}%`, touchAction: isManualCrop ? 'none' : 'auto' }}
-                onPointerDown={event => {
-                  if (!isManualCrop) return;
-                  const point = getImagePoint(event);
-                  if (!point) return;
-
-                  if (event.pointerType === 'touch') {
-                    if (touchCropStep === 0 || touchCropStep === 2) {
-                      setSelection({ startX: point.x, startY: point.y, endX: point.x, endY: point.y });
-                      setTouchCropStep(1);
-                    } else {
-                      setSelection(previous => previous ? { ...previous, endX: point.x, endY: point.y } : null);
-                      setTouchCropStep(2);
-                    }
-                    return;
-                  }
-
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  setIsSelecting(true);
-                  setSelection({ startX: point.x, startY: point.y, endX: point.x, endY: point.y });
-                }}
-                onPointerMove={event => {
-                  if (!isSelecting) return;
-                  const point = getImagePoint(event);
-                  if (!point) return;
-                  setSelection(previous => previous ? { ...previous, endX: point.x, endY: point.y } : null);
-                }}
-                onPointerUp={event => {
-                  if (!isSelecting) return;
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-                  setIsSelecting(false);
-                }}
+                style={{ width: `${zoom * 100}%` }}
               />
               {isManualCrop && selection && (
-                <div className="pointer-events-none absolute border-2 border-[#28a9a9] bg-[#28a9a9]/20" style={getSelectionStyle()} />
+                <>
+                  <div className="pointer-events-none absolute border-2 border-[#28a9a9] bg-[#28a9a9]/20" style={getSelectionStyle()} />
+                  {(['topRight', 'bottomLeft'] as const).map(pointName => {
+                    const point = selection[pointName];
+                    return (
+                      <button
+                        key={pointName}
+                        type="button"
+                        aria-label={pointName === 'topRight' ? 'Điểm góc trên phải' : 'Điểm góc dưới trái'}
+                        className="absolute z-10 h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-move rounded-full border-2 border-white bg-[#168888] shadow-md touch-none"
+                        style={{ left: point.x, top: point.y }}
+                        onPointerDown={event => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                          setDraggingPoint(pointName);
+                        }}
+                        onPointerMove={event => {
+                          if (draggingPoint !== pointName || !imageRef.current) return;
+                          const nextPoint = getImagePoint(event);
+                          if (!nextPoint) return;
+                          const bounds = imageRef.current.getBoundingClientRect();
+                          const minimumSize = 8;
+                          setSelection(previous => {
+                            if (!previous) return previous;
+                            if (pointName === 'topRight') {
+                              return {
+                                ...previous,
+                                topRight: {
+                                  x: Math.max(previous.bottomLeft.x + minimumSize, Math.min(bounds.width, nextPoint.x)),
+                                  y: Math.max(0, Math.min(previous.bottomLeft.y - minimumSize, nextPoint.y)),
+                                },
+                              };
+                            }
+                            return {
+                              ...previous,
+                              bottomLeft: {
+                                x: Math.max(0, Math.min(previous.topRight.x - minimumSize, nextPoint.x)),
+                                y: Math.max(previous.topRight.y + minimumSize, Math.min(bounds.height, nextPoint.y)),
+                              },
+                            };
+                          });
+                        }}
+                        onPointerUp={event => {
+                          if (draggingPoint !== pointName) return;
+                          event.currentTarget.releasePointerCapture(event.pointerId);
+                          setDraggingPoint(null);
+                        }}
+                        onPointerCancel={() => setDraggingPoint(null)}
+                      />
+                    );
+                  })}
+                </>
               )}
             </div>
           </div>

@@ -1,8 +1,15 @@
 import dotenv
 import asyncio
 import os
+import sys
 import xmltodict
 from pathlib import Path
+
+def get_base_dir():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+
+    return Path(__file__).resolve().parent.parent
 
 # Load .env file if it exists (for local development)
 env_file = Path("backend/.env")
@@ -10,7 +17,8 @@ if env_file.exists():
     dotenv.load_dotenv(env_file)
 
 # Use environment variables (with fallback defaults for local development)
-SETTING_PATH = "./settings.xml"
+BASE_DIR = get_base_dir()
+SETTING_PATH = BASE_DIR / "settings.xml"
 
 REDIS_HOST = "localhost"
 REDIS_PASSWORD = "redispassword"
@@ -19,6 +27,8 @@ REDIS_PORT = 6380
 default_settings = {
     "settings": {
         "mode": "basic",
+        "allowMutilPush": False,
+        "autoStart": False,
         "ui": "desktop", # desktop, kiosk
         "server_ip": "",
         "title": "Phần mềm hỗ trợ nhập liệu hồ sơ hành chính công",

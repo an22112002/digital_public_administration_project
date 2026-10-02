@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from backend.services.settingsServices import get_ui_user, set_ui_user, getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel
-from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest, SetUIUserRequest
+from backend.services.settingsServices import get_ui_user, set_ui_user, getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel, getAutoStart, setAutoStart
+from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest, SetUIUserRequest, SetAutoStartRequest
 
 settings_router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -12,6 +12,7 @@ async def get_ui():
 @settings_router.put("/ui-user")
 async def set_ui(request: SetUIUserRequest):
     return await set_ui_user(request.ui)
+
 # naps2 settings endpoints
 @settings_router.get("/naps2-path")
 async def get_naps2_path():
@@ -122,4 +123,15 @@ async def get_mode():
 @settings_router.put("/mode")
 async def set_mode(request: ModeSaveRequest):
     result = await saveMode(request)
+    return result
+
+# auto start settings endpoints
+@settings_router.get("/auto-start")
+async def get_auto_start():
+    result = await getAutoStart()
+    return result
+
+@settings_router.put("/auto-start")
+async def set_auto_start(request: SetAutoStartRequest):
+    result = await setAutoStart(request)
     return result

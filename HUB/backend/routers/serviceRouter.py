@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from backend.models.serviceModels import SetServiceActiveRequest
-from backend.services.serviceServices import getAllServices, getCategories, get_services, setServiceActive
+from backend.models.serviceModels import SetServiceActiveRequest, SetServiceAllowMutilPushRequest
+from backend.services.serviceServices import getAllServices, getCategories, get_services, setServiceActive, setServiceAllowMutilPush
 
 service_router = APIRouter(prefix="/services", tags=["services"])
 
@@ -31,6 +31,16 @@ async def set_service_active(service_id: int, request: SetServiceActiveRequest):
     Bật hoặc tắt một service theo serviceID.
     """
     updated = setServiceActive(service_id, request.active)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Service not found")
+    return {"success": True, "serviceID": str(service_id), "active": request.active}
+
+@service_router.put("/{service_id}/allow-mutil-push")
+async def set_service_allow_mutil_push(service_id: int, request: SetServiceAllowMutilPushRequest):
+    """
+    Cập nhật trạng thái allowMutilPush của một service theo serviceID.
+    """
+    updated = setServiceAllowMutilPush(service_id, request.active)
     if not updated:
         raise HTTPException(status_code=404, detail="Service not found")
     return {"success": True, "serviceID": str(service_id), "active": request.active}

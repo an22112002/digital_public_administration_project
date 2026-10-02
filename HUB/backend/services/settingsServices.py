@@ -1,9 +1,11 @@
 from backend.config import open_settings, save_settings
 from backend.crud.settingsCrud import get_province_list, get_commune_list, get_position
 from backend.log.main import log_exception
-from backend.models.settingsModels import ModeSaveRequest
+from backend.models.settingsModels import ModeSaveRequest, SetAutoStartRequest
 from backend.services.LLMServices import getLMStudioModels, checkLMStudioServerRunning, loadLocalLMStudioModel, unloadLocalLMStudioModel, runPromptInLMStudio
 import socket
+import winreg
+import sys
 
 # UI người dùng
 async def get_ui_user():
@@ -21,6 +23,7 @@ async def set_ui_user(ui: str):
         log_exception(e, "HUB")
         print(f"[Error] Failed to set UI user: {e}")
         return {"success": False, "message": "Lỗi khi lưu giao diện người dùng.", "error": str(e)}
+
 # NAPS2 settings functions
 async def getNAPS2Path() -> str:
     settings_data = await open_settings()
@@ -175,3 +178,115 @@ async def saveMode(data: ModeSaveRequest) -> dict:
         log_exception(e, "HUB")
         print(f"[Error] Failed to save mode: {e}")
         return {"success": False, "message": "Lỗi khi lưu chế độ.", "error": str(e)}
+
+
+STARTUP_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+APPROVED_KEY = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+STARTUP_NAME = "HUB"
+
+
+def set_startup(exe_path: str):
+    """Thêm exe vào Windows Startup và bật trạng thái Startup."""
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            STARTUP_KEY,
+            0,
+            winreg.KEY_SET_VALUE,
+        ) as key:
+            winreg.SetValueEx(
+                key,
+                STARTUP_NAME,
+                0,
+                winreg.REG_SZ,
+                f'"{exe_path}"',
+            )
+
+        # ==============================
+        # StartupApproved
+        # ==============================
+        with winreg.CreateKey(
+            winreg.HKEY_CURRENT_USER,
+            APPROVED_KEY,
+        ) as key:
+            winreg.SetValueEx(
+                key,
+                STARTUP_NAME,
+                0,
+                winreg.REG_BINARY,
+                bytes.fromhex(
+                    "020000000000000000000000"
+                ),
+            )
+
+        print(f"[Startup] Enabled: {exe_path}")
+
+    except Exception as e:
+        print(f"[Error] Failed to set startup: {e}")
+
+
+def unset_startup(exe_path: str):
+    """Xóa exe khỏi Windows Startup."""
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            STARTUP_KEY,
+            0,
+            winreg.KEY_READ | winreg.KEY_SET_VALUE,
+        ) as key:
+
+            current_path, _ = winreg.QueryValueEx(
+                key,
+                STARTUP_NAME,
+            )
+
+            if current_path.strip('"') == exe_path:
+                winreg.DeleteValue(
+                    key,
+                    STARTUP_NAME,
+                )
+
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"[Error] Failed to remove Run startup: {e}")
+
+    # ==============================
+    # StartupApproved
+    # ==============================
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            APPROVED_KEY,
+            0,
+            winreg.KEY_SET_VALUE,
+        ) as key:
+            winreg.DeleteValue(
+                key,
+                STARTUP_NAME,
+            )
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"[Error] Failed to remove StartupApproved: {e}")
+
+async def getAutoStart() -> dict:
+    settings_data = await open_settings()
+    auto_start = settings_data.get("settings", {}).get("autoStart", False)
+    return {"status": auto_start}
+
+async def setAutoStart(request: SetAutoStartRequest) -> dict:
+    try:
+        settings_data = await open_settings()
+        settings_data["settings"]["autoStart"] = request.active
+        await save_settings(settings_data)
+        exe_path = sys.executable
+        if request.active:
+            set_startup(exe_path)
+        else:
+            unset_startup(exe_path)
+        return {"success": True, "message": "Cài đặt tự động khởi động đã được lưu thành công."}
+    except Exception as e:
+        log_exception(e, "HUB")
+        print(f"[Error] Failed to set auto start: {e}")
+        return {"success": False, "message": "Lỗi khi lưu cài đặt tự động khởi động.", "error": str(e)}

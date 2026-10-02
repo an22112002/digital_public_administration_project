@@ -6,6 +6,7 @@ export interface Service {
     title: string;
     realTitle: string;
     category: string;
+    allowMutilPush: boolean;
     active: boolean;
 }
 
@@ -16,5 +17,10 @@ export async function getServices() {
 
 export async function updateServiceActive(serviceId: Service['serviceID'], active: boolean) {
     const response = await HUB_api.put<UpdateResponse>(`/services/${serviceId}/active`, { active });
+    return response.data;
+}
+
+export async function updateServiceAllowMutilPush(serviceId: Service['serviceID'], active: boolean) {
+    const response = await HUB_api.put<UpdateResponse>(`/services/${serviceId}/allow-mutil-push`, { active });
     return response.data;
 }

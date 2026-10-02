@@ -5,37 +5,12 @@ from pywinauto import keyboard
 import pyperclip
 
 basic_personal_info_fields = ["type_document", "fullname", "dob", "sex", "id_number", "issue_date", "address", "issue_place"]
+cnkh_info_fields = ["commune", "province", "number", "serial_number", "registration_date"]
 
 # Hàm để điền dữ liệu vào form
 async def formInsert(data: list[tuple]):
     for field_type, value in data:
         await press_key(field_type, value)
-
-# Kiểm tra thông tin cá nhân đã được điền sẵn chưa
-def is_personal_info_filled() -> bool:
-    # thử copy thông tin tiếp theo vào clipboard
-    time.sleep(0.05)
-    keyboard.send_keys("{TAB}")     # Tab để chuyển đến trường tiếp theo
-    time.sleep(0.05)
-    keyboard.send_keys("^c")        # Ctrl+C để copy thông tin tiếp theo 
-    time.sleep(0.05)
-    content = pyperclip.paste()     # Lưu trữ clipboard hiện tại
-    time.sleep(0.05)
-    keyboard.send_keys("+{TAB}")     # Shift+Tab để quay lại trường trước đó
-    time.sleep(0.05)
-    if content != "":
-        return True
-    return False
-
-# điền địa chỉ vào form
-async def insertAddress(address: str):
-    # đang ở đầu trường họ tên
-    data = [
-        ("tab", 18),  # tab đến trường địa chỉ
-        ("select", "Việt Nam"),
-        ("text", address),
-    ]
-    await formInsert(data)
 
 # nhập thông tin cá nhân của 1 người vào form
 async def insertWifeInfo(personal_data: list[dict]):
@@ -56,8 +31,9 @@ async def insertWifeInfo(personal_data: list[dict]):
         ("text", personal_data["issue_place"]),
         ("tab", 2),
         ("checkbox", 1),
+        ("select", "Việt Nam"),
         ("text", personal_data["address"]),
-        ("select", "Việt Nam")
+        
     ]
     await formInsert(data)
 
@@ -77,36 +53,67 @@ async def insertHusbandInfo(personal_data: list[dict]):
         ("date", personal_data["issue_date"]),
         ("tab", 2),
         ("text", personal_data["issue_place"]),
-        ("tab", 1),
+        ("tab", 2),
         ("checkbox", 1),
-        ("tab", 1),
         ("select", "Việt Nam"),
         ("text", personal_data["address"]),
     ]
     await formInsert(data)
 
-async def fill_extention():
+async def insertCNKHInfo(info: dict):
+    step = []
+    if info["province"] and info["province"] != "UNKNOWN":
+        step.append(("select", info["province"]))
+    else:
+        step.append(("tab", 1))
+    if info["commune"] and info["commune"] != "UNKNOWN":
+        step.append(("select", info["commune"]))
+    else:
+        step.append(("tab", 1))
+    if info["registration_date"] and info["registration_date"] != "00000000":
+        step.append(("date", info["registration_date"]))
+        step.append(("tab", 2))
+    else:
+        step.append(("tab", 5))
+    if info["number"] and info["number"] != "UNKNOWN":
+        step.append(("text", info["number"]))
+    else:
+        step.append(("tab", 1))
+    if info["serial_number"] and info["serial_number"] != "UNKNOWN":
+        step.append(("text", info["serial_number"]))
+    else:
+        step.append(("tab", 1))
+    await formInsert(step)
+
+async def fill_extension():
     # các thông tin bổ sung của form ko có trong thông tin cá nhân của vợ
     await press_key("text", "1")  # kết hôn lần thứ mấy
     time.sleep(0.05)
-    await press_key("select", "hiện tại chưa đăng ký kết hôn với ai")  # tình trạng hôn nhân
+    await press_key("select", "Hiện tại đang có vợ/chồng")  # tình trạng hôn nhân
     time.sleep(0.05)
 
-async def setCopyNumber(number: int):
+async def setCopyNumber1(number: int):
     data = [
+        ("tab", 10),
         ("checkbox", 1),
+        ("text", str(number))
+    ]
+    await formInsert(data)
+
+async def setCopyNumber2(number: int):
+    data = [
         ("tab", 1),
+        ("checkbox", 1),
         ("text", str(number))
     ]
     await formInsert(data)
 
 # điền thông tin vào form đăng ký kết hôn
-async def formDangKyKetHonInsert(form_data: list[dict]):
+async def formDangKyLaiKetHonInsert(form_data: list[dict]):
     # reset con trỏ về đầu form
     await reset()
     # kiểm tra thông tin
     if len(form_data) == 0:
-        # ko có dữ liệu để điền, bỏ qua
         return
     elif len(form_data) == 2:
         # có 2 người: điền thông tin cá nhân của cả 2 người, trong đó có 1 người đã được VNeID điền chỉ cần điền lại địa chỉ
@@ -114,14 +121,31 @@ async def formDangKyKetHonInsert(form_data: list[dict]):
         wife = next((p for p in form_data if p["type"] == "cccd_wife"), None)
         # start
         await insertWifeInfo(wife)  # điền thông tin cá nhân của vợ
-        await fill_extention()
+        await fill_extension()
         await insertHusbandInfo(husband)  # điền thông tin cá nhân của chồng
-        await fill_extention()
+        await fill_extension()
         time.sleep(0.05)
         keyboard.send_keys("{TAB}")     # Tab để chuyển đến trường tiếp theo
         time.sleep(0.05)
         keyboard.send_keys("{SPACE}")   # Space để chọn checkbox
-        await setCopyNumber(1)  # điền số bản sao
+        await setCopyNumber1(1)  # điền số bản sao
         # end
         return
-
+    elif len(form_data) == 3:
+        # có 2 người: điền thông tin cá nhân của cả 2 người, trong đó có 1 người đã được VNeID điền chỉ cần điền lại địa chỉ
+        husband = next((p for p in form_data if p["type"] == "cccd_husband"), None)
+        wife = next((p for p in form_data if p["type"] == "cccd_wife"), None)
+        cnkh = next((p for p in form_data if p["type"] == "cnkh"), None)
+        # start
+        await insertWifeInfo(wife)  # điền thông tin cá nhân của vợ
+        await fill_extension()
+        await insertHusbandInfo(husband)  # điền thông tin cá nhân của chồng
+        await fill_extension()
+        time.sleep(0.05)
+        keyboard.send_keys("{TAB}")     # Tab để chuyển đến trường tiếp theo
+        time.sleep(0.05)
+        keyboard.send_keys("{SPACE}")   # Space để chọn checkbox
+        await insertCNKHInfo(cnkh)  # điền thông tin CNKH
+        await setCopyNumber2(1)  # điền số bản sao
+        # end
+        return

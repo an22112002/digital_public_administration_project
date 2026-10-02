@@ -11,7 +11,7 @@ from OCR.main import processOCR2
 import cv2
 
 from backend.crud.processCrud import get_service_by_id, get_documents_to_scan, get_service_documents
-from backend.models.processModels import UserTask, StartScanRequest, StartWebViewRequest, WebSocketRequest, CropImageRequest, RotateImageRequest
+from backend.models.processModels import DocumentFiles, UserTask, StartScanRequest, StartWebViewRequest, WebSocketRequest, CropImageRequest, RotateImageRequest
 from backend.config import open_settings
 from backend.crop.main import splitPDF, detect_and_crop_image, extendImage, crop_with_position
 
@@ -315,7 +315,7 @@ async def processWebSocket(data, user_task: UserTask) -> bool:
         return False
 
 # Chuẩn bị dữ liệu cho webview
-async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: UserTask):
+async def _readyDataForWebViewSingle(webview_request: DocumentFiles, user_task: UserTask, run_index: int):
     # chuẩn bị dữ liệu cho webview
     # ghép dữ liệu từ service, documents và webview_request thành một cấu trúc dữ liệu phù hợp, thêm các trường từ 
     documents_data = []
@@ -386,11 +386,16 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
         await autoExtendImage(doc)
 
     # tạo các file PDF từ các file JPG ứng với mỗi tài liệu
-    for doc in documents_data:
+    upload_folder = Path(
+        SCANNER_SAVE_PATH,
+        f"patch_{user_task.timestamp}",
+        "upload",
+        f"run_{run_index}",
+    )
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    for document_index, doc in enumerate(documents_data):
         if len(doc['files']) > 0:
-            output_pdf_path = os.path.join(SCANNER_SAVE_PATH, f"patch_{user_task.timestamp}", "upload", f"{remove_accents(doc['title'])}.pdf")
-            upload_folder = Path(SCANNER_SAVE_PATH, f"patch_{user_task.timestamp}", "upload")
-            upload_folder.mkdir(parents=True, exist_ok=True)
+            output_pdf_path = str(upload_folder / f"{document_index}_{remove_accents(doc['title'])}.pdf")
             await merge_images_to_pdf(doc['files'], output_pdf_path)
             doc['pdf_path'] = output_pdf_path
         else:
@@ -425,7 +430,7 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
         "commune": settings.get("settings", {}).get("commune", "Unknown"),
         "button_send_documents_position": user_task.service.get("buttonPosition", 1),
     }
-    data_process.append(DataProcess(task_name="auto_pass_select_service", data=data_auto_pass))
+    data_process.append(DataProcess(task_name="auto_pass_select_service", data=[[data_auto_pass]]))
 
     files_insert_data = []
     # thêm các tài liệu bổ sung vào files_insert_data
@@ -437,7 +442,7 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                 "ref": doc['srID']
             })
     # xử lý doc SCAN
-    for doc in service_docs:
+    for service_doc_index, doc in enumerate(service_docs):
         source_type = doc["sourceType"]
         source_ref = doc["sourceRef"]
         # nếu source_type là "SCAN" thì tìm tài liệu tương ứng trong documents_data theo source_ref (là code của tài liệu), nếu tìm thấy thì thêm vào files_insert_data
@@ -478,8 +483,7 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
                         all_refs_available = False
                         missing_refs.append(sr)
                 if all_refs_available and images_to_merge:
-                    os.makedirs(os.path.join(SCANNER_SAVE_PATH, f"patch_{user_task.timestamp}", "upload"), exist_ok=True)
-                    output_pdf_path = os.path.join(SCANNER_SAVE_PATH, f"patch_{user_task.timestamp}", "upload", f"Giay_to_{doc['sdID']}.pdf")
+                    output_pdf_path = str(upload_folder / f"special_{service_doc_index}_{doc['sdID']}.pdf")
                     await merge_images_to_pdf(images_to_merge, output_pdf_path)
                     files_insert_data.append({
                         "name": doc['realTitle'],
@@ -547,6 +551,55 @@ async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: U
     data_process.append(DataProcess(task_name="insert_file_table", data=files_insert_data))
     # for dp in data_process:
     #     dp.print_out()
+    return data_process
+
+
+async def readyDataForWebView(webview_request: StartWebViewRequest, user_task: UserTask):
+    if not webview_request.data:
+        raise ValueError("Cần cung cấp ít nhất một lần thực hiện dịch vụ.")
+
+    auto_pass_data = None
+    files_by_run = []
+    form_data_by_task = {}
+    form_task_order = []
+
+    for run_index, run_request in enumerate(webview_request.data, start=1):
+        run_data_process = await _readyDataForWebViewSingle(run_request, user_task, run_index)
+        run_files = None
+        run_form_data = {}
+
+        for process in run_data_process:
+            if process.task_name == "auto_pass_select_service":
+                if auto_pass_data is None:
+                    auto_pass_data = process.data
+            elif process.task_name == "insert_file_table":
+                run_files = process.data
+            elif process.task_name.startswith("form"):
+                run_form_data[process.task_name] = process.data
+
+        for task_name in run_form_data:
+            if task_name not in form_data_by_task:
+                form_data_by_task[task_name] = [[] for _ in files_by_run]
+                form_task_order.append(task_name)
+
+        for task_name in form_task_order:
+            form_data_by_task[task_name].append(run_form_data.get(task_name, []))
+
+        files_by_run.append(run_files or [])
+
+    data_process = []
+    if auto_pass_data is not None:
+        data_process.append(DataProcess(task_name="auto_pass_select_service", data=auto_pass_data))
+
+    for task_name in form_task_order:
+        data_process.append(
+            DataProcess(
+                task_name=task_name,
+                data=form_data_by_task[task_name],
+            )
+        )
+
+    data_process.append(DataProcess(task_name="insert_file_table", data=files_by_run))
     return data_process
 
 # process webview

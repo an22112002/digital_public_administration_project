@@ -4,9 +4,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
-import asyncio
-import ctypes
-import uuid
 
 from backend.config import REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, SCANNER_SAVE_PATH
 
@@ -16,11 +13,15 @@ from backend.routers.processRouter import process_router
 from backend.routers.serviceRouter import service_router
 
 from backend.services.settingsServices import getMode
-from backend.services.LLMServices import checkLMStudioServerRunning, loadLocalLMStudioModel, unloadLocalLMStudioModel
+from backend.services.LLMServices import loadLocalLMStudioModel, unloadLocalLMStudioModel
 
 from backend.worker.Manager import WorkerManager
 from backend.log.main import install_exception_hooks, log_exception
-from database.index import db
+
+import webbrowser
+import asyncio
+import httpx
+from backend.config import open_settings
 
 redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
 worker_manager = WorkerManager()
@@ -81,12 +82,6 @@ class Backend:
     # CONFIG
     # ==========================================================
 
-    REDIS_LOCK_KEY = "HUB:LOCK"
-    REDIS_LOCK_TTL = 30
-    REDIS_HEARTBEAT_INTERVAL = 10
-
-    WINDOWS_MUTEX_NAME = "Global\\HUB_BACKEND_SINGLE_INSTANCE"
-
     # ==========================================================
     # INIT
     # ==========================================================
@@ -98,18 +93,7 @@ class Backend:
 
         self.mode = "basic"
         self.server_ip = None
-
-        # ------------------------------------------------------
-        # Unique ID cho instance HUB này
-        # ------------------------------------------------------
-
-        self.hub_id = str(uuid.uuid4())
-
-        # ------------------------------------------------------
-        # Windows Mutex
-        # ------------------------------------------------------
-
-        self.mutex_handle = None
+        self.on_started = None
 
         # ------------------------------------------------------
         # Redis
@@ -128,13 +112,6 @@ class Backend:
         # ------------------------------------------------------
 
         self.worker_manager = WorkerManager()
-
-        # ------------------------------------------------------
-        # Lock state
-        # ------------------------------------------------------
-
-        self.redis_lock_acquired = False
-        self.heartbeat_task = None
 
         # ------------------------------------------------------
         # FastAPI
@@ -162,94 +139,12 @@ class Backend:
         print("[Start] Starting HUB backend...")
         install_exception_hooks("HUB")
 
-        windows_mutex_acquired = False
-        redis_lock_acquired = False
         worker_started = False
 
         try:
 
             # ==================================================
-            # 1. WINDOWS MUTEX
-            # ==================================================
-
-            if not self.acquire_windows_mutex():
-
-                print(
-                    "[Error] Another HUB instance "
-                    "is already running"
-                )
-
-                app.state.should_exit = True
-
-                # Không start bất kỳ thứ gì và exit ngay lập tức.
-
-                raise SystemExit(1)
-
-            windows_mutex_acquired = True
-
-            print("[Start] Windows mutex acquired")
-
-            # ==================================================
-            # 2. REDIS
-            # ==================================================
-
-            response = await self.redis_client.ping()
-
-            if not response:
-
-                raise RuntimeError(
-                    "Redis connection failed"
-                )
-
-            print("[Start] Redis connection successful")
-
-            # ==================================================
-            # 3. REDIS LOCK
-            # ==================================================
-
-            if not await self.acquire_redis_lock():
-
-                print(
-                    "[Error] Another HUB instance "
-                    "already owns the Redis lock"
-                )
-
-                app.state.should_exit = True
-
-                return
-
-            redis_lock_acquired = True
-
-            print(
-                f"[Start] Redis lock acquired: {self.hub_id}"
-            )
-
-            # ==================================================
-            # 4. HEARTBEAT
-            # ==================================================
-
-            self.heartbeat_task = asyncio.create_task(
-                self.redis_lock_heartbeat()
-            )
-
-            # ==================================================
-            # 5. DATABASE
-            # ==================================================
-
-            response = db.init_pool()
-
-            if not response:
-
-                raise RuntimeError(
-                    "Database connection failed"
-                )
-
-            print(
-                "[Start] Database connection successful"
-            )
-
-            # ==================================================
-            # 6. CLEAR REDIS
+            # CLEAR REDIS
             # ==================================================
 
             await self.clear_hub_redis_data()
@@ -259,7 +154,7 @@ class Backend:
             )
 
             # ==================================================
-            # 7. WORKER
+            # WORKER
             # ==================================================
 
             await self.worker_manager.start()
@@ -275,25 +170,20 @@ class Backend:
             )
 
             # =================================================
-            # 8. MODE
+            # MODE
             # =================================================
             if self.mode == "basic":
                 print("[Start] Running in BASIC mode")
             elif self.mode == "server":
-                # kiểm tra LM studio, load model
-                result = await checkLMStudioServerRunning("localhost")
-                if result is True:
-                    await loadLocalLMStudioModel()
-                    print("[Start] Running in SERVER mode")
-                else:
-                    raise ConnectionError(f"Cannot connect to LM Studio server at {self.server_ip}")
+                await loadLocalLMStudioModel()
+                print("[Start] Running in SERVER mode")
             elif self.mode == "client":
-                if self.server_ip is None:
-                    raise ValueError("Server IP not specified")
-                result = await checkLMStudioServerRunning(self.server_ip)
-                if result is False:
-                    raise ConnectionError(f"Cannot connect to LM Studio server at {self.server_ip}")
                 print("[Start] Running in CLIENT mode")
+
+            if self.on_started:
+                self.on_started()
+
+            asyncio.create_task(self.startup())
 
             # ==================================================
             # RUNNING
@@ -365,46 +255,6 @@ class Backend:
                 )
 
             # ==================================================
-            # STOP HEARTBEAT
-            # ==================================================
-
-            if self.heartbeat_task:
-
-                self.heartbeat_task.cancel()
-
-                try:
-
-                    await self.heartbeat_task
-
-                except asyncio.CancelledError:
-
-                    pass
-
-                self.heartbeat_task = None
-
-            # ==================================================
-            # RELEASE REDIS LOCK
-            # ==================================================
-
-            if redis_lock_acquired:
-
-                try:
-
-                    await self.release_redis_lock()
-
-                    print(
-                        "[End] Redis lock released"
-                    )
-
-                except Exception as e:
-
-                    log_exception(e, "HUB")
-
-                    print(
-                        f"[Error] Redis lock release failed: {e}"
-                    )
-
-            # ==================================================
             # CLOSE REDIS
             # ==================================================
 
@@ -424,208 +274,32 @@ class Backend:
                     f"[Error] Redis shutdown failed: {e}"
                 )
 
-            # ==================================================
-            # RELEASE WINDOWS MUTEX
-            # ==================================================
-
-            if windows_mutex_acquired:
-
-                self.release_windows_mutex()
-
-                print(
-                    "[End] Windows mutex released"
-                )
-
             print(
                 "[End] HUB backend shutdown"
             )
 
-    # ==========================================================
-    # WINDOWS MUTEX
-    # ==========================================================
+    async def startup(self):
+        settings_data = await open_settings()
 
-    def acquire_windows_mutex(self) -> bool:
-
-        if self.mutex_handle:
-
-            return True
-
-        ERROR_ALREADY_EXISTS = 183
-
-        kernel32 = ctypes.windll.kernel32
-
-        handle = kernel32.CreateMutexW(
-            None,
-            False,
-            self.WINDOWS_MUTEX_NAME,
-        )
-
-        if not handle:
-
-            print(
-                "[Error] Cannot create Windows mutex"
-            )
-
-            return False
-
-        last_error = kernel32.GetLastError()
-
-        if last_error == ERROR_ALREADY_EXISTS:
-
-            kernel32.CloseHandle(handle)
-
-            return False
-
-        self.mutex_handle = handle
-
-        return True
-
-    # ==========================================================
-
-    def release_windows_mutex(self):
-
-        if not self.mutex_handle:
-
+        if not settings_data.get("settings", {}).get("autoStart", False):
             return
 
-        try:
-
-            ctypes.windll.kernel32.ReleaseMutex(
-                self.mutex_handle
-            )
-
-        except Exception as e:
-
-            log_exception(e, "HUB")
-
-        try:
-
-            ctypes.windll.kernel32.CloseHandle(
-                self.mutex_handle
-            )
-
-        except Exception as e:
-
-            log_exception(e, "HUB")
-
-
-        self.mutex_handle = None
-
-    # ==========================================================
-    # REDIS LOCK
-    # ==========================================================
-
-    async def acquire_redis_lock(self) -> bool:
-
-        result = await self.redis_client.set(
-            self.REDIS_LOCK_KEY,
-            self.hub_id,
-            nx=True,
-            ex=self.REDIS_LOCK_TTL,
-        )
-
-        if result:
-
-            self.redis_lock_acquired = True
-
-            return True
-
-        return False
-
-    # ==========================================================
-
-    async def release_redis_lock(self):
-
-        if not self.redis_lock_acquired:
-
-            return
-
-        # Chỉ delete nếu lock vẫn thuộc về HUB này.
-        #
-        # Không dùng:
-        #
-        # await redis.delete(KEY)
-        #
-        # vì lock có thể đã hết hạn và được HUB khác lấy.
-
-        script = """
-        if redis.call("GET", KEYS[1]) == ARGV[1] then
-            return redis.call("DEL", KEYS[1])
-        else
-            return 0
-        end
-        """
-
-        try:
-
-            await self.redis_client.eval(
-                script,
-                1,
-                self.REDIS_LOCK_KEY,
-                self.hub_id,
-            )
-
-        finally:
-
-            self.redis_lock_acquired = False
-
-    # ==========================================================
-    # REDIS HEARTBEAT
-    # ==========================================================
-
-    async def redis_lock_heartbeat(self):
+        ui = settings_data.get("settings", {}).get("ui", "desktop")
 
         while True:
-
             try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get( "http://127.0.0.1:8000/ping", timeout=1)
 
-                await asyncio.sleep(
-                    self.REDIS_HEARTBEAT_INTERVAL
-                )
+                if response.status_code == 200:
+                    break
 
-                if not self.redis_lock_acquired:
+            except Exception:
+                pass
 
-                    return
+            await asyncio.sleep(1)
 
-                # Chỉ gia hạn nếu lock vẫn thuộc HUB này.
-
-                script = """
-                if redis.call("GET", KEYS[1]) == ARGV[1] then
-                    return redis.call("EXPIRE", KEYS[1], ARGV[2])
-                else
-                    return 0
-                end
-                """
-
-                result = await self.redis_client.eval(
-                    script,
-                    1,
-                    self.REDIS_LOCK_KEY,
-                    self.hub_id,
-                    self.REDIS_LOCK_TTL,
-                )
-
-                if result == 0:
-
-                    print(
-                        "[Error] Redis HUB lock was lost"
-                    )
-
-                    self.redis_lock_acquired = False
-
-                    return
-
-            except asyncio.CancelledError:
-
-                return
-
-            except Exception as e:
-
-                log_exception(e, "HUB")
-
-                print(
-                    f"[Error] Redis heartbeat failed: {e}"
-                )
+        webbrowser.open(f"http://localhost:5174/{ui}")
 
     # ==========================================================
     # CLEAR HUB REDIS DATA
@@ -655,11 +329,17 @@ class Backend:
 
                 # Không xóa lock hiện tại.
 
-                if key == self.REDIS_LOCK_KEY:
+                key_name = (
+                    key.decode()
+                    if isinstance(key, bytes)
+                    else key
+                )
+
+                if key_name == "HUB:LOCK":
 
                     continue
 
-                keys.append(key)
+                keys.append(key_name)
 
             if keys:
 

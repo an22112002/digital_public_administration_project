@@ -5,7 +5,11 @@ interface DocumentListProps {
   documents: DocumentItem[];
   scannedFiles: ScanFile[];
   focusDocumentId: string | null;
+  submissionSetIndex: number;
+  submissionSetCount: number;
   onSelectDocument: (srID: string) => void;
+  onPreviousSubmissionSet: () => void;
+  onNextSubmissionSet: () => void;
   onOpenAddDocument: () => void;
 }
 
@@ -13,13 +17,50 @@ export default function DocumentList({
   documents,
   scannedFiles,
   focusDocumentId,
+  submissionSetIndex,
+  submissionSetCount,
   onSelectDocument,
   onOpenAddDocument,
+  onPreviousSubmissionSet,
+  onNextSubmissionSet,
 }: DocumentListProps) {
   return (
-    <aside className="document-list-panel rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5] xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+    <aside className="document-list-panel rounded-[24px] bg-[#fff7f0] p-5 ring-1 ring-[#f7c7b5] xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100vh-3rem)]">
       <div className="document-list-header mb-5 flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-slate-800"><FolderOpenOutlined/>&nbsp;Tài liệu</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          <FolderOpenOutlined />
+          <h2 className="text-2xl font-bold text-slate-800">Hồ sơ {submissionSetIndex + 1}</h2>
+        </div>
+        {submissionSetCount > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onPreviousSubmissionSet}
+              disabled={submissionSetIndex === 0}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#f2c7b8] bg-white text-[#921507] transition hover:bg-[#fff0e8] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Hồ sơ trước"
+              title="Hồ sơ trước"
+            >
+              ‹
+            </button>
+            <span className="min-w-12 text-center text-xs font-semibold text-slate-500">
+              {submissionSetIndex + 1}/{submissionSetCount}
+            </span>
+            <button
+              type="button"
+              onClick={onNextSubmissionSet}
+              disabled={submissionSetIndex === submissionSetCount - 1}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#f2c7b8] bg-white text-[#921507] transition hover:bg-[#fff0e8] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Hồ sơ tiếp theo"
+              title="Hồ sơ tiếp theo"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-slate-500">Tài liệu</div>
         <button
           type="button"
           onClick={onOpenAddDocument}
@@ -29,7 +70,7 @@ export default function DocumentList({
         </button>
       </div>
 
-      <div className="document-list-items space-y-3">
+      <div className="document-list-items min-h-0 space-y-3 overflow-y-auto pr-1.5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#e63a12]/40 scrollbar-thumb-rounded-full">
         {documents.map(doc => {
           const isFocus = focusDocumentId === doc.srID;
           const selectedPageNumbers = scannedFiles

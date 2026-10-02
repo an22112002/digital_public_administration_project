@@ -55,7 +55,7 @@ export default function KioskHomePage() {
 
 			<main className="Kiosk-content">
 				<section className="Kiosk-ai-image">
-					<h2>DỊCH VỤ CÔNG TRỰC TUYẾN</h2>
+					<h2>AI DỊCH VỤ CÔNG TRỰC TUYẾN</h2>
 					<img src={aiBootsImage} alt="Trợ lý AI hỗ trợ dịch vụ công" />
 				</section>
 

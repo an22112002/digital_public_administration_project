@@ -2,7 +2,7 @@ from database.index import db
 
 def get_all_services():
     with db.get_cursor() as cursor:
-        sql = "SELECT serviceID, title, realTitle, category, active FROM `services`"
+        sql = "SELECT serviceID, title, realTitle, category, allowMutilPush, active FROM `services`"
         cursor.execute(sql)
         return cursor.fetchall()
 
@@ -42,4 +42,17 @@ def set_service_active(service_id: int, active: bool):
 
         sql = "UPDATE `services` SET active = %s WHERE serviceID = %s"
         cursor.execute(sql, (active, service_id))
+        return True
+
+def set_service_allow_mutil_push(service_id: int, allow_mutil_push: bool):
+    with db.get_cursor() as cursor:
+        cursor.execute(
+            "SELECT serviceID FROM `services` WHERE serviceID = %s",
+            (service_id,)
+        )
+        if cursor.fetchone() is None:
+            return False
+
+        sql = "UPDATE `services` SET allowMutilPush = %s WHERE serviceID = %s"
+        cursor.execute(sql, (allow_mutil_push, service_id))
         return True

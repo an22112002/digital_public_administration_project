@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 3, 0),
-    prodvers=(1, 0, 3, 0),
+    filevers=(1, 0, 4, 0),
+    prodvers=(1, 0, 4, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -17,11 +17,11 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'CÔNG TY TNHH CÔNG NGHỆ PHARMACY VIỆT NAM'),
             StringStruct('FileDescription', 'Phần mềm Kiosk Robot AI'),
-            StringStruct('FileVersion', '1.0.3.0'),
-            StringStruct('InternalName', 'HUB'),
+            StringStruct('FileVersion', '1.0.4.0'),
+            StringStruct('InternalName', 'Phần mềm Kiosk Robot AI'),
             StringStruct('OriginalFilename', 'HUB.exe'),
-            StringStruct('ProductName', 'HUB'),
-            StringStruct('ProductVersion', '1.0.3.0'),
+            StringStruct('ProductName', 'Phần mềm Kiosk Robot AI'),
+            StringStruct('ProductVersion', '1.0.4.0'),
             StringStruct('LegalCopyright', 'Copyright © 2026')
           ]
         )

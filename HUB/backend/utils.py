@@ -2,9 +2,9 @@ import unicodedata
 import base64
 from PIL import Image
 from io import BytesIO
-# chuyển tiếng việt có dấu sang không dấu
 
-def remove_accents(input_str, length_limit=50):
+# chuyển tiếng việt có dấu sang không dấu
+def remove_accents(input_str, length_limit=47):
     """
     Hàm loại bỏ dấu tiếng Việt khỏi chuỗi đầu vào.
     :param input_str: Chuỗi đầu vào có dấu.

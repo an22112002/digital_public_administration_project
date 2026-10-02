@@ -1,8 +1,4 @@
-import time
-
 from ..auto_press_keyboard import press_key, reset
-from pywinauto import keyboard
-import pyperclip
 
 basic_personal_info_fields = ["type_document", "fullname", "dob", "sex", "id_number", "issue_date", "address", "issue_place"]
 
@@ -11,24 +7,8 @@ async def formInsert(data: list[tuple]):
     for field_type, value in data:
         await press_key(field_type, value)
 
-# Kiểm tra thông tin cá nhân đã được điền sẵn chưa
-def is_personal_info_filled() -> bool:
-    # thử copy thông tin tiếp theo vào clipboard
-    time.sleep(0.05)
-    keyboard.send_keys("{TAB}")     # Tab để chuyển đến trường tiếp theo
-    time.sleep(0.05)
-    keyboard.send_keys("^c")        # Ctrl+C để copy thông tin tiếp theo 
-    time.sleep(0.05)
-    content = pyperclip.paste()     # Lưu trữ clipboard hiện tại
-    time.sleep(0.05)
-    keyboard.send_keys("+{TAB}")     # Shift+Tab để quay lại trường trước đó
-    time.sleep(0.05)
-    if content != "":
-        return True
-    return False
 
-# điền thông tin cá nhân của người điền form caiChinhHoTich
-async def insertSelf(personal_data: dict, is_self: bool):
+async def insertDo(personal_data: dict, is_main: bool):
     if not all(field in personal_data for field in basic_personal_info_fields):
         print("Dữ liệu form không đầy đủ. Vui lòng cung cấp tất cả các trường cần thiết.")
         return
@@ -40,53 +20,56 @@ async def insertSelf(personal_data: dict, is_self: bool):
         ("date", personal_data["issue_date"]),
         ("tab", 2),
         ("text", personal_data["issue_place"]),
-        ("tab", 2),
+        ("select", "Thường trú"),
+        ("tab", 1),
         ("checkbox", 1),
         ("select", "Việt Nam"),
-        ("text", personal_data["address"])
+        ("text", personal_data["address"]),
     ]
-    if is_self:
+    if is_main:
         data.append(("checkbox", 1))  
-        data.append(("tab", 1))
+        data.append(("tab", 14))
     else:
-        data.append(("tab", 1))  
-        data.append(("checkbox", 1))  
+        data.append(("tab", 14))  
+        data.append(("checkbox", 1))
         data.append(("tab", 1))
     await formInsert(data)
 
-# điền thông tin cá nhân người được caiChinhHoTich
 async def insertMain(personal_data: dict):
     if not all(field in personal_data for field in basic_personal_info_fields):
         print("Dữ liệu form không đầy đủ. Vui lòng cung cấp tất cả các trường cần thiết.")
         return
-    data = [
+    data = []
+    data.extend([
         ("text", personal_data["fullname"]),
         ("date", personal_data["dob"]),
         ("select", personal_data["sex"]),
         ("select", "Kinh"),
-        ("select", "Việt Nam"),
         ("text", personal_data["id_number"]),
+        ("select", "Việt Nam"),
         ("select", personal_data["type_document"]),
         ("text", personal_data["id_number"]),
         ("date", personal_data["issue_date"]),
         ("tab", 2),
         ("text", personal_data["issue_place"]),
-        ("tab", 2),
+        ("select", "Thường trú"),
+        ("tab", 1),
         ("checkbox", 1),
         ("select", "Việt Nam"),
-        ("text", personal_data["address"])
-    ]
+        ("text", personal_data["address"]),
+        ("select", "Giấy khai sinh bản sao/Trích lục ghi vào Sổ hộ tịch việc khai sinh (bản sao)"),
+    ])
     await formInsert(data)
 
 async def setCopyNumber(number: int):
     data = [
-        ("tab", 12),
+        ("tab", 9),
         ("text", str(number))
     ]
     await formInsert(data)
 
-# điền thông tin vào form caiChinhHoTich
-async def formCaiChinhHoTichInsert(form_data: list[dict]):
+# điền thông tin vào form xacNhanTinhTrangHonNhan
+async def formCapBanSaoGiayKhaiSinhTrinhLucHoTichInsert(form_data: list[dict]):
     # reset con trỏ về đầu form
     await reset()
     # kiểm tra thông tin
@@ -96,14 +79,15 @@ async def formCaiChinhHoTichInsert(form_data: list[dict]):
     elif len(form_data) == 1:
         # chỉ có 1 người -> vừa là người điền form, vừa là người được caiChinhHoTich
         person = form_data[0]
-        await insertSelf(person, is_self=True)  # điền thông tin cá nhân của người điền
+        await insertDo(person, is_main=True)  # điền thông tin cá nhân của người điền
         await insertMain(person)  # điền thông tin cá nhân của người còn lại
         await setCopyNumber(1)  # điền số bản sao
         return
     else:
-        self_person = next((p for p in form_data if p["type"] == "cccd_do"), None)
+        do_person = next((p for p in form_data if p["type"] == "cccd_do"), None)
         main_person = next((p for p in form_data if p["type"] == "cccd_main"), None)
-        await insertSelf(self_person, is_self=False)  # điền thông tin cá nhân của người điền
-        await insertMain(main_person)  # điền thông tin cá nhân của người caiChinhHoTich
+        await insertDo(do_person, is_main=False)  # điền thông tin cá nhân của người điền
+        await insertMain(main_person)  # điền thông tin cá nhân của người còn lại
         await setCopyNumber(1)  # điền số bản sao
-        return            
+
+            

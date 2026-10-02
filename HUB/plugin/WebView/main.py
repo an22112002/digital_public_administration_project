@@ -5,8 +5,10 @@ import webview
 from pathlib import Path
 from typing import Literal
 from plugin.WebView.forms.form_dangKyKetHon import formDangKyKetHonInsert
+from plugin.WebView.forms.form_dangKyLaiKetHon import formDangKyLaiKetHonInsert
 from plugin.WebView.forms.form_caiChinhHoTich import formCaiChinhHoTichInsert
 from plugin.WebView.forms.form_xacNhanTinhTrangHonNhan import formXacNhanTinhTrangHonNhanInsert
+from plugin.WebView.forms.form_capBanSaoGiayKhaiSinhTrinhLucHoTich import formCapBanSaoGiayKhaiSinhTrinhLucHoTichInsert
 import threading
 import os
 import win32gui
@@ -16,13 +18,21 @@ import win32process
 import ctypes
 import time
 
-PROCESSES = Literal["auto_pass_select_service", "insert_file_table", "form_dangKyKetHon", "form_caiChinhHoTich", "form_xacNhanTinhTrangHonNhan"]
+PROCESSES = Literal[
+    "auto_pass_select_service", 
+    "insert_file_table", 
+    "form_dangKyKetHon", 
+    "form_dangKyLaiKetHon",
+    "form_caiChinhHoTich", 
+    "form_xacNhanTinhTrangHonNhan",
+    "form_capBanSaoGiayKhaiSinhTrinhLucHoTich"
+]
 
 TITLE = "VNeID"
 
 class DataProcess:
 
-    def __init__(self, task_name: PROCESSES, data: list[dict]):
+    def __init__(self, task_name: PROCESSES, data: list[list[dict]]):
         self.task_name = task_name
         self.data = data
 
@@ -32,7 +42,7 @@ class DataProcess:
     def set_task_name(self, task_name: PROCESSES):
         self.task_name = task_name
 
-    def set_data(self, data: list[dict]):
+    def set_data(self, data: list[list[dict]]):
         self.data = data
 
     def to_dict(self) -> dict:
@@ -51,11 +61,23 @@ class DataProcess:
 # lớp SupportApi được sử dụng để hỗ trợ các chức năng liên quan đến giao diện người dùng trong ứng dụng webview. Nó cung cấp các phương thức để tương tác với cửa sổ webview, xử lý việc tải tệp và đóng cửa sổ.
 class SupportApi:
 
-    def __init__(self, debug=False):
+    def __init__(self, url: str, total: int, debug=False):
         self.window = None
         self.fill_form = False
         self.fill_form_lock = threading.Lock()
         self.debug = debug
+
+        self.url = url
+        self.current_index = 0
+        self.total = total
+
+    def get_current_index(self):
+        if self.debug:
+            print(
+                f"[PY] Current index = {self.current_index}"
+            )
+
+        return self.current_index
 
     def destroy(self):
         try:
@@ -69,7 +91,17 @@ class SupportApi:
         return True
 
     def finish(self):
-        print("[PY] Finish WebView")
+        self.current_index += 1
+        if self.total == self.current_index:
+            if self.debug:
+                print("[PY] All tasks finished, closing WebView")
+            self.destroy()
+            return True
+
+        self.reset_form_fill()
+        if self.debug:
+            print("[PY] Back to URL")
+        webview.windows[0].load_url(self.url)
         return True
 
     def reset_form_fill(self):
@@ -222,6 +254,10 @@ class SupportApi:
             await formCaiChinhHoTichInsert(form_data)
         elif form_type == "form_xacNhanTinhTrangHonNhan":
             await formXacNhanTinhTrangHonNhanInsert(form_data)
+        elif form_type == "form_dangKyLaiKetHon":
+            await formDangKyLaiKetHonInsert(form_data)
+        elif form_type == "form_capBanSaoGiayKhaiSinhTrinhLucHoTich":
+            await formCapBanSaoGiayKhaiSinhTrinhLucHoTichInsert(form_data)
 
         return True
 
@@ -440,19 +476,19 @@ def autoPassSelectService(window, data: dict):
     window.evaluate_js(js)
 
 # nhập dữ liệu giấy tờ vào bảng trong giao diện webview
-def fileTableInsert(window, paper_input):
+def fileTableInsert(window, paper_input: list[list[dict]]):
     js_path = Path(__file__).parent / "js" / "table_insert.js"
 
     js = js_path.read_text(encoding="utf-8")
 
     papers_json = json.dumps(paper_input, ensure_ascii=False)
 
-    js = js.replace("PAPERS_DATA", papers_json)
+    js = js.replace("__PAPERS_DATA__", papers_json)
 
     window.evaluate_js(js)
 
 # nhập form đăng ký kết hôn vào giao diện webview
-def formInsert(window, form_data, form_type: str):
+def formInsert(window, form_data: list[list[dict]], form_type: str):
 
     js_path = Path(__file__).parent / "js" / "form_trigger.js"
 
@@ -468,8 +504,8 @@ def formInsert(window, form_data, form_type: str):
         ensure_ascii=False
     )
 
-    js = js.replace("FORM_DATA", form_data_json)
-    js = js.replace("FORM_TYPE", form_type_json)
+    js = js.replace("__FORM_DATA__", form_data_json)
+    js = js.replace("__FORM_TYPE__", form_type_json)
 
     window.evaluate_js(js)
 
@@ -480,7 +516,11 @@ def process_with_webview(url: str, data_process: list[DataProcess]):
     print(
         f"[WEBVIEW PROCESS] PID={os.getpid()} START"
     )
-    api = SupportApi()
+    insert_file_process = next(
+        process for process in data_process
+        if process.task_name == "insert_file_table"
+    )
+    api = SupportApi(url=url, total=len(insert_file_process.data))
         
     window = webview.create_window(
         title=TITLE,
@@ -545,7 +585,7 @@ def on_loaded(window, data_process: list[DataProcess]):
     for process in data_process:
         if process.task_name == "auto_pass_select_service":
             print("[PY] Auto pass select service:")
-            autoPassSelectService(window, process.data)
+            autoPassSelectService(window, process.data[0][0])
         elif process.task_name == "insert_file_table":
             print("[PY] Insert file table:")
             fileTableInsert(window, process.data)
@@ -562,25 +602,37 @@ if __name__ == "__main__":
     province = "Thành phố Hà Nội"
     commune = "Phường Ba Đình"
 
-    data_auto_pass = {
+    data_auto_pass = [[{
         "province": province,
         "commune": commune,
         "button_send_documents_position": 1
-    }
+    }]]
 
     paper_input = [
-        {
-            "name": "Bản chính hoặc bản sao có chứng thực hoặc bản sao điện tử được chứng thực từ bản chính của giấy chứng nhận quyền sở hữu, quyền sử dụng hoặc giấy tờ thay thế được pháp luật quy định đối với tài sản mà pháp luật quy định phải đăng ký quyền sở hữu, quyền sử dụng trong trường hợp giao dịch liên quan đến tài sản đó; trừ trường hợp người lập di chúc đang bị cái chết đe dọa đến tính mạng. Trường hợp nộp hồ sơ trực tiếp, người yêu cầu chứng thực có thể nộp bản sao kèm xuất trình bản chính để đối chiếu.",
-            "file": r"D:\test\test.pdf"
-        },
-        {
-            "name": "Dự thảo giao dịch",
-            "file": r"D:\test\test2.pdf"
-        },
-        {
-            "name": "CCCD",
-            "file": r"D:\test\test3.pdf"
-        },
+        [
+            {
+                "name": "Bản chính hoặc bản sao có chứng thực hoặc bản sao điện tử được chứng thực từ bản chính của giấy chứng nhận quyền sở hữu, quyền sử dụng hoặc giấy tờ thay thế được pháp luật quy định đối với tài sản mà pháp luật quy định phải đăng ký quyền sở hữu, quyền sử dụng trong trường hợp giao dịch liên quan đến tài sản đó; trừ trường hợp người lập di chúc đang bị cái chết đe dọa đến tính mạng. Trường hợp nộp hồ sơ trực tiếp, người yêu cầu chứng thực có thể nộp bản sao kèm xuất trình bản chính để đối chiếu.",
+                "file": r"D:\test\test.pdf"
+            },
+            {
+                "name": "Dự thảo giao dịch",
+                "file": r"D:\test\test2.pdf"
+            },
+            {
+                "name": "CCCD",
+                "file": r"D:\test\test3.pdf"
+            },
+        ],
+        [
+            {
+                "name": "Bản chính hoặc bản sao có chứng thực hoặc bản sao điện tử được chứng thực từ bản chính của giấy chứng nhận quyền sở hữu, quyền sử dụng hoặc giấy tờ thay thế được pháp luật quy định đối với tài sản mà pháp luật quy định phải đăng ký quyền sở hữu, quyền sử dụng trong trường hợp giao dịch liên quan đến tài sản đó; trừ trường hợp người lập di chúc đang bị cái chết đe dọa đến tính mạng. Trường hợp nộp hồ sơ trực tiếp, người yêu cầu chứng thực có thể nộp bản sao kèm xuất trình bản chính để đối chiếu.",
+                "file": r"D:\test\test4.pdf"
+            },
+            {
+                "name": "Dự thảo giao dịch",
+                "file": r"D:\test\test5.pdf"
+            },
+        ]
     ]
 
     data_process = [

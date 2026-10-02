@@ -1,7 +1,6 @@
 from fastapi import WebSocket
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Literal
-from plugin.WebView.main import DataProcess
 
 class StartProcessResponse(BaseModel):
     service: dict | None
@@ -17,8 +16,21 @@ class DocumentFile(BaseModel):
     srID: str           # ID của yêu cầu quét, nếu là "ADD:<tên tài liệu>" thì nó là tài liệu bổ sung
     files: list[str]    # path to files
 
-class StartWebViewRequest(BaseModel):
+class DocumentFiles(BaseModel):
     files: list[DocumentFile]
+
+class StartWebViewRequest(BaseModel):
+    data: list[DocumentFiles]
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_single_run_payload(cls, value):
+        if isinstance(value, dict) and "data" not in value and "files" in value:
+            return {
+                **value,
+                "data": [{"files": value["files"]}],
+            }
+        return value
 
 class ImportFileRequest(BaseModel):
     filename: str

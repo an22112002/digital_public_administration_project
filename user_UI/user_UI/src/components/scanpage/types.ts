@@ -20,3 +20,9 @@ export interface SendFile {
   srID: string;
   files: string[];
 }
+
+export interface SubmissionSet {
+  id: string;
+  documents: DocumentItem[];
+  selectedSupplementalDocumentIds: string[];
+}

@@ -1,4 +1,4 @@
-from backend.crud.servicesCrud import get_all_services, get_categories, get_services, set_service_active
+from backend.crud.servicesCrud import get_all_services, get_categories, get_services, set_service_active,set_service_allow_mutil_push
 
 def getAllServices():
     data = get_all_services()
@@ -17,3 +17,6 @@ def getCategories():
 
 def setServiceActive(service_id: int, active: bool):
     return set_service_active(service_id, active)
+
+def setServiceAllowMutilPush(service_id: int, action: bool):
+    return set_service_allow_mutil_push(service_id, action)

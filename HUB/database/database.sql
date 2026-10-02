@@ -22,6 +22,7 @@ CREATE TABLE `services`(
     `category` VARCHAR(50) NOT NULL,
     `url` TEXT NOT NULL,
     `buttonPosition` INT NOT NULL,
+    `allowMutilPush` BOOLEAN NOT NULL DEFAULT 0,
     `active` BOOLEAN NOT NULL
 );
 CREATE TABLE `service_documents`(

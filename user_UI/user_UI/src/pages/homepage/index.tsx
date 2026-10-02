@@ -48,7 +48,7 @@ export default function HomePage() {
               <div className="space-y-6">
                 <div className="flex w-full justify-center lg:justify-center">
                   <div className="inline-flex w-full max-w-[560px] items-center justify-center rounded-full border-2 border-white/90 bg-[#fffaf4] px-6 py-3 text-center text-[12px] font-black uppercase tracking-[0.22em] text-[#a84802] shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:text-[14px]">
-                    DỊCH VỤ CÔNG TRỰC TUYẾN
+                    AI DỊCH VỤ CÔNG TRỰC TUYẾN
                   </div>
                 </div>
 

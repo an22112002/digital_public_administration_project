@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getServices, updateServiceActive, type Service } from "../../api/serviceAPI";
+import { getServices, updateServiceActive, updateServiceAllowMutilPush, type Service } from "../../api/serviceAPI";
 
 export default function ServicePage() {
     // const [file, setFile] = useState<File | null>(null);
@@ -14,9 +14,10 @@ export default function ServicePage() {
         setLoading(true);
         setError("");
         try {
-            setServices(await getServices());
+            const [serviceList] = await Promise.all([getServices()]);
+            setServices(serviceList);
         } catch {
-            setError("Không thể tải danh sách dịch vụ.");
+            setError("Không thể tải cấu hình dịch vụ.");
         } finally {
             setLoading(false);
         }
@@ -38,6 +39,23 @@ export default function ServicePage() {
             ));
         } catch {
             setError(`Không thể cập nhật trạng thái dịch vụ "${service.title}".`);
+        } finally {
+            setUpdatingServiceId(null);
+        }
+    };
+
+    const handleAllowMutilPushChange = async (service: Service, allowMutilPush: boolean) => {
+        setUpdatingServiceId(service.serviceID);
+        setError("");
+        try {
+            await updateServiceAllowMutilPush(service.serviceID, allowMutilPush);
+            setServices((currentServices) => currentServices.map((currentService) =>
+                currentService.serviceID === service.serviceID
+                    ? { ...currentService, allowMutilPush }
+                    : currentService,
+            ));
+        } catch {
+            setError(`Không thể cập nhật trạng thái gửi nhiều dịch vụ của "${service.title}".`);
         } finally {
             setUpdatingServiceId(null);
         }
@@ -122,6 +140,7 @@ export default function ServicePage() {
                             <th className="px-4 py-3">Tên dịch vụ</th>
                             <th className="px-4 py-3">Tên thực</th>
                             <th className="px-4 py-3">Danh mục</th>
+                            <th className="px-4 py-3 text-center">Gửi nhiều cùng lúc</th>
                             <th className="px-4 py-3 text-center">Hoạt động</th>
                         </tr>
                     </thead>
@@ -138,6 +157,16 @@ export default function ServicePage() {
                                 <td className="px-4 py-4 text-sm font-semibold text-slate-800">{service.title}</td>
                                 <td className="px-4 py-4 text-sm text-slate-500">{service.realTitle}</td>
                                 <td className="px-4 py-4"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{service.category}</span></td>
+                                <td className="px-4 py-4 text-center">
+                                    <input
+                                        type="checkbox"
+                                        className="h-5 w-5 cursor-pointer accent-cyan-500 disabled:cursor-not-allowed"
+                                        checked={service.allowMutilPush}
+                                        disabled={updatingServiceId === service.serviceID}
+                                        onChange={(event) => void handleAllowMutilPushChange(service, event.target.checked)}
+                                        aria-label={`Cho phép gửi nhiều dịch vụ của ${service.title}`}
+                                    />
+                                </td>
                                 <td className="px-4 py-4 text-center">
                                     <input
                                         type="checkbox"
