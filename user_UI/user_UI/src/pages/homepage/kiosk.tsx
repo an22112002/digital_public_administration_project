@@ -4,6 +4,7 @@ import { getCategories, getServicesList } from '../../api/servicesAPI';
 import type { Service } from '../../api/servicesAPI';
 import Header from '../../header/header';
 import aiBootsImage from '../../assets/images/ai boots.png';
+import guideVideo from '../../assets/images/video hd.mp4';
 
 function SearchIcon({ className = '' }: { className?: string }) {
 	return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.7" /><path d="m16 16 4.2 4.2" strokeLinecap="round" /></svg>;
@@ -16,6 +17,7 @@ export default function KioskHomePage() {
 	const [categories, setCategories] = useState<string[]>([]);
 	const [services, setServices] = useState<Service[]>([]);
 	const [currentPage, setCurrentPage] = useState(1);
+	const [showGuide, setShowGuide] = useState(false);
 	const servicesPerPage = 8;
 
 	useEffect(() => {
@@ -42,6 +44,41 @@ export default function KioskHomePage() {
 		return () => { active = false; };
 	}, [selectedCategory, searchTerm]);
 
+	useEffect(() => {
+		if (showGuide) {
+			return;
+		}
+
+		let idleTimer = window.setTimeout(() => {
+			setShowGuide(true);
+		}, 60_000);
+
+		const handleTouchStart = () => {
+			setShowGuide(true);
+		};
+
+		const resetIdleTimer = () => {
+			window.clearTimeout(idleTimer);
+			idleTimer = window.setTimeout(() => {
+				setShowGuide(true);
+			}, 60_000);
+		};
+
+		const activityEvents = ['mousemove', 'keydown', 'click', 'pointerdown', 'scroll'];
+		window.addEventListener('touchstart', handleTouchStart, { passive: true });
+		activityEvents.forEach((eventName) => {
+			window.addEventListener(eventName, resetIdleTimer, { passive: true });
+		});
+
+		return () => {
+			window.removeEventListener('touchstart', handleTouchStart);
+			activityEvents.forEach((eventName) => {
+				window.removeEventListener(eventName, resetIdleTimer);
+			});
+			window.clearTimeout(idleTimer);
+		};
+	}, [showGuide]);
+
 	const totalPages = Math.max(1, Math.ceil(services.length / servicesPerPage));
 	const visibleServices = services.slice(
 		(currentPage - 1) * servicesPerPage,
@@ -51,9 +88,45 @@ export default function KioskHomePage() {
 
 	return (
 		<div className="Kiosk-screen">
-			<Header />
+			<Header action={
+				<button
+					type="button"
+					className="Kiosk-guide-button"
+					onClick={() => setShowGuide((value) => !value)}
+					aria-expanded={showGuide}
+					aria-controls="kiosk-guide-panel"
+					aria-label="Xem video hướng dẫn"
+				>
+					▶
+				</button>
+			} />
 
 			<main className="Kiosk-content">
+				{showGuide && (
+					<section id="kiosk-guide-panel" className="Kiosk-guide-panel" aria-live="polite">
+						<div className="Kiosk-guide-panel-header">
+							<button
+								type="button"
+								className="Kiosk-guide-close"
+								onClick={() => setShowGuide(false)}
+								aria-label="Đóng video hướng dẫn"
+							>
+								✕
+							</button>
+						</div>
+						<video
+							className="Kiosk-guide-video"
+							controls
+							autoPlay
+							playsInline
+							preload="metadata"
+							src={guideVideo}
+						>
+							Trình duyệt của bạn không hỗ trợ thẻ video.
+						</video>
+					</section>
+				)}
+
 				<section className="Kiosk-ai-image">
 					<h2>DỊCH VỤ CÔNG TRỰC TUYẾN</h2>
 					<img src={aiBootsImage} alt="Trợ lý AI hỗ trợ dịch vụ công" />
@@ -321,8 +394,14 @@ export default function KioskHomePage() {
 									.Kiosk-pagination { gap: 8px; margin-top: 14px; }
 									.Kiosk-pagination button { min-width: 40px; min-height: 40px; padding: 6px 11px; font-size: 17px; }
 								}
-							`}</style>
-		</div>
+							`}</style>									<style>{`
+										.Kiosk-guide-button{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:1.3rem;cursor:pointer;box-shadow:0 8px 18px rgba(140,48,17,.18);transition:all .2s ease}.Kiosk-guide-button:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
+										.Kiosk-guide-panel{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(15,23,42,.78);backdrop-filter:blur(2px)}
+										.Kiosk-guide-panel-header{position:absolute;top:18px;right:18px;display:flex;justify-content:flex-end;align-items:center}
+										.Kiosk-guide-close{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:1.2rem;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.2)}
+										.Kiosk-guide-video{display:block;width:100%;height:100%;max-width:100vw;max-height:100vh;object-fit:contain;border-radius:18px;background:#000;outline:none}
+										@media (max-width: 640px){.Kiosk-guide-panel{padding:16px}.Kiosk-guide-close{width:38px;height:38px}}
+									`}</style>		</div>
 	);
 }
 
