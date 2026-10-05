@@ -3,10 +3,12 @@ import HomePage from '../pages/homepage';
 import KioskHomePage from '../pages/homepage/kiosk';
 import ScanPage from '../pages/scanpage';
 import KioskScanPage from '../pages/scanpage/kiosk';
+import UserAudioGuide from '../components/UserAudioGuide';
 
 export default function Routers() {
   return (
     <BrowserRouter>
+      <UserAudioGuide />
       <Routes>
         <Route path="/desktop">
           <Route index element={<HomePage />} />
