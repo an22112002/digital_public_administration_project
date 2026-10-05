@@ -19,8 +19,9 @@ from backend.config import open_settings
 import os
 import pymupdf
 from pathlib import Path
-# mock:main
-from plugin.Scanner.main import ScanStatus, scan_documents_to_folder
+# Legacy NAPS2 implementation retained for reference:
+# from plugin.Scanner.main import ScanStatus, scan_documents_to_folder
+from plugin.Scanner.twain_scanner import ScanTwainStatus as ScanStatus, scan_documents_to_folder
 from backend.config import open_settings, SCANNER_SAVE_PATH
 from backend.utils import remove_accents
 from backend.log.main import log_exception
@@ -78,23 +79,30 @@ async def scanActivate(timestamp: int, data: StartScanRequest, websocket: WebSoc
             errors="replace"
         )
     try:
-        settings = await open_settings()  # Mở cài đặt từ file config
-
-        path_to_naps2 = settings.get("settings", {}).get("naps2_path", "")
         output_folder = SCANNER_SAVE_PATH
         device_name = data.scanner 
-        driver = data.driver
         color_mode = "color"
         filename = f"scan_{int(time.time())}"
 
+        # Legacy NAPS2 call retained for reference:
+        # settings = await open_settings()
+        # path_to_naps2 = settings.get("settings", {}).get("naps2_path", "")
+        # driver = data.driver
+        # scan_status, error_message = await scan_documents_to_folder(
+        #     timestamp=timestamp,
+        #     path_to_naps2=path_to_naps2,
+        #     output_folder=output_folder,
+        #     filename=filename,
+        #     device_name=device_name,
+        #     driver=driver,
+        #     color_mode=color_mode,
+        # )
         scan_status, error_message = await scan_documents_to_folder(
             timestamp=timestamp,
-            path_to_naps2=path_to_naps2,
             output_folder=output_folder,
             filename=filename,
             device_name=device_name,
-            driver=driver,
-            color_mode=color_mode
+            color_mode=color_mode,
         )
 
         if scan_status == ScanStatus.SUCCESS:

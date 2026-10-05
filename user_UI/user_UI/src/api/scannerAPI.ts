@@ -15,9 +15,9 @@ export interface ScannerOption {
 }
 
 export interface DevicesListResponse {
-    wia: ScannerDevice[];
-    twain: ScannerDevice[];
-    escl: ScannerDevice[];
+    wia?: ScannerDevice[];
+    twain?: ScannerDevice[];
+    escl?: ScannerDevice[];
 }
 
 export interface ScannerOptionsResponse {
@@ -26,11 +26,11 @@ export interface ScannerOptionsResponse {
 }
 
 export async function getDevicesList() {
-    const response = await HUB_api.get("/scanner/naps2/devices");
+    const response = await HUB_api.get("/scanner/twain/devices");
     return response.data as DevicesListResponse;
 }
 
 export async function getScannerOptions() {
-    const response = await HUB_api.get("/scanner/naps2/options");
+    const response = await HUB_api.get("/scanner/twain/options");
     return response.data as ScannerOptionsResponse;
 }

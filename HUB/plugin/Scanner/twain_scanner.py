@@ -5,6 +5,7 @@ import twain
 from io import BytesIO
 from PIL import Image
 import time
+from typing import Literal
 
 from backend.log.main import log_exception
 
@@ -37,17 +38,37 @@ async def get_list_scanner_devices() -> list:
             except Exception:
                 pass
 
+
+def _scan_error_status(error: Exception) -> ScanTwainStatus:
+    """Đổi lỗi của TWAIN driver thành trạng thái mà backend đang sử dụng."""
+    message = str(error).lower()
+
+    if "busy" in message or "maxconnections" in message:
+        return ScanTwainStatus.DEVICE_BUSY
+    if "offline" in message or "disconnected" in message:
+        return ScanTwainStatus.DEVICE_OFFLINE
+    if "jam" in message:
+        return ScanTwainStatus.PAPER_JAM
+    if "no document" in message or "feeder" in message or "no paper" in message:
+        return ScanTwainStatus.NO_DOCUMENT
+    if "communication" in message or "connection" in message:
+        return ScanTwainStatus.COMMUNICATION_ERROR
+
+    return ScanTwainStatus.UNKNOWN_ERROR
+
 # Scan toàn bộ giấy tờ sang folder JPEG
 async def scan_documents_to_folder(
     timestamp: int,
     output_folder: str,
     filename: str,
     device_name: str,
+    color_mode: Literal["color", "grayscale", "blackwhite"] = "color",
 ) -> tuple[ScanTwainStatus, str | None]:
-    try:
-        root = None
-        images = []
+    """Quét ADF bằng TWAIN và lưu toàn bộ trang thành một file PDF."""
+    root = None
+    images = []
 
+    try:
         output_folder_path = Path(output_folder) / f"patch_{timestamp}"
         output_folder_path.mkdir(parents=True, exist_ok=True)
 
@@ -93,10 +114,15 @@ async def scan_documents_to_folder(
             # ==================================================
 
             try:
+                pixel_type = {
+                    "color": twain.TWPT_RGB,
+                    "grayscale": twain.TWPT_GRAY,
+                    "blackwhite": twain.TWPT_BW,
+                }[color_mode]
                 source.set_capability(
                     twain.ICAP_PIXELTYPE,
                     twain.TWTY_UINT16,
-                    twain.TWPT_RGB
+                    pixel_type,
                 )
 
             except Exception as e:
@@ -152,12 +178,9 @@ async def scan_documents_to_folder(
             # NHẬN TỪNG TRANG
             # ==================================================
 
-            page_number = 0
-
             start_time = time.time()
 
             while True:
-
                 result = source.xfer_image_natively()
 
                 if result:
@@ -176,16 +199,17 @@ async def scan_documents_to_folder(
                             images.append(image)
 
                         except Exception as e:
-                            print(f"[Scanner] Lỗi khi xử lý trang {page_number + 1}: {e}")
+                            print(f"[Scanner] Lỗi khi xử lý trang {len(images) + 1}: {e}")
 
                         if remaining_count == 0:
                             break
-                    if time.time() - start_time > 30:
-                        # Nếu quá 30 giây mà vẫn chưa nhận được trang, coi như hết trang
-                        return (
-                            ScanTwainStatus.NO_DOCUMENT,
-                            "Không phát hiện tài liệu trong feeder."
-                        )
+                elif time.time() - start_time > 30:
+                    return (
+                        ScanTwainStatus.NO_DOCUMENT,
+                        "Không phát hiện tài liệu trong feeder.",
+                    )
+
+                time.sleep(0.05)
 
             # ==================================================
             # KHÔNG CÓ TRANG
@@ -212,10 +236,12 @@ async def scan_documents_to_folder(
             for image in images:
                 image.close()
 
+            return (ScanTwainStatus.SUCCESS, None)
+
     except Exception as e:
         log_exception(e, "SCANNER")
         print(f"[Scanner] Lỗi khi quét: {e}")
-        return (ScanTwainStatus.UNKNOWN_ERROR, f"Lỗi khi quét: {e}")
+        return (_scan_error_status(e), f"Lỗi khi quét: {e}")
         
     finally:
         if root is not None:

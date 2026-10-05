@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from backend.services.settingsServices import get_ui_user, set_ui_user, getCommuneList, getNAPS2Path, getProvinceList, getTitle, setNAPS2Path, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel, getAutoStart, setAutoStart
-from backend.models.settingsModels import ModeSaveRequest, SetNAPS2PathRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest, SetUIUserRequest, SetAutoStartRequest
+from backend.services.settingsServices import get_ui_user, set_ui_user, getCommuneList, getProvinceList, getTitle, setTitle, getProvince, getCommune, savePosition, getMode, saveMode, getSelfIP, getLLMSetting, getLLMModels, setLLMSetting, getLLMServerStatus, unloadLLMModel, loadLLMModel, getAutoStart, setAutoStart
+from backend.models.settingsModels import ModeSaveRequest, SetPositionRequest, SetTitleRequest, SetLLMSettingRequest, SetUIUserRequest, SetAutoStartRequest
 
 settings_router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -13,19 +13,19 @@ async def get_ui():
 async def set_ui(request: SetUIUserRequest):
     return await set_ui_user(request.ui)
 
-# naps2 settings endpoints
-@settings_router.get("/naps2-path")
-async def get_naps2_path():
-    naps2_path = await getNAPS2Path()
-    return {"naps2_path": naps2_path}
-
-@settings_router.put("/naps2-path")
-async def set_naps2_path(request: SetNAPS2PathRequest):
-    result = await setNAPS2Path(request.path)
-    if result:
-        return {"success": True, "message": "NAPS2 path updated successfully."}
-    else:
-        return {"success": False, "message": "Failed to update NAPS2 path."}
+# Legacy NAPS2 settings endpoints retained as commented code. TWAIN does not
+# require an executable path or a scanner-specific setting in this router.
+# @settings_router.get("/naps2-path")
+# async def get_naps2_path():
+#     naps2_path = await getNAPS2Path()
+#     return {"naps2_path": naps2_path}
+#
+# @settings_router.put("/naps2-path")
+# async def set_naps2_path(request: SetNAPS2PathRequest):
+#     result = await setNAPS2Path(request.path)
+#     if result:
+#         return {"success": True, "message": "NAPS2 path updated successfully."}
+#     return {"success": False, "message": "Failed to update NAPS2 path."}
 
 # user UI settings endpoints
 @settings_router.get("/title")

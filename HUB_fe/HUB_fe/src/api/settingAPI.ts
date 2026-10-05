@@ -1,10 +1,6 @@
 import HUB_api from "./base";
 import type { UpdateResponse } from "./base";
 
-export interface NAPS2PathResponse {
-    naps2_path: string;
-}
-
 export interface TitleResponse {
     title: string;
 }
@@ -42,16 +38,6 @@ interface CommuneOption {
 
 export interface ProvinceListResponse {
     province_list: ProvinceOption[];
-}
-
-export async function getNAPS2Path() {
-    const response = await HUB_api.get("/settings/naps2-path");
-    return response.data as NAPS2PathResponse;
-}
-
-export async function saveNAPS2Path(path: string) {
-    const response = await HUB_api.put("/settings/naps2-path", { path: path });
-    return response.data as UpdateResponse;
 }
 
 export async function getTitle() {

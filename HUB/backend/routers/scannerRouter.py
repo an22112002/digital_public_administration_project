@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter
 
 from backend.services.scannerServices import (
-    checkNAPS2installed,
+    checkTWAINinstalled,
     getScannerDevices,
 )
 from backend.log.main import log_exception
@@ -31,10 +31,7 @@ r = redis.Redis(
 async def lifespan(router: APIRouter):
     tasks = [
         asyncio.create_task(
-            update_scanner_list_devices("wia", 10)
-        ),
-        asyncio.create_task(
-            update_scanner_list_devices("twain", 10)
+            update_scanner_list_devices(10)
         ),
     ]
 
@@ -50,10 +47,7 @@ async def lifespan(router: APIRouter):
             return_exceptions=True,
         )
 
-        for driver in ("wia", "twain"):
-            await r.delete(
-                f"scanner_devices:{driver}"
-            )
+        await r.delete("scanner_devices:twain")
 
         await r.aclose()
 
@@ -65,39 +59,41 @@ scanner_router = APIRouter(
 )
 
 
-@scanner_router.get("/naps2/installed")
-async def check_naps2_installed():
-    return await checkNAPS2installed()
+# @scanner_router.get("/naps2/installed")
+# async def check_naps2_installed():
+#     return await checkNAPS2installed()
 
 
-@scanner_router.get("/naps2/devices")
+@scanner_router.get("/twain/installed")
+async def check_twain_installed():
+    return await checkTWAINinstalled()
+
+
+@scanner_router.get("/twain/devices")
 async def get_scanner_devices():
     return await get_scanner_devices_from_redis()
 
 
-@scanner_router.get("/naps2/options")
+@scanner_router.get("/twain/options")
 async def get_scanner_options():
     devices_by_driver = await get_scanner_devices_from_redis()
 
     options = []
 
-    for driver in ("wia", "twain"):
-        devices = devices_by_driver.get(driver, [])
+    for device in devices_by_driver.get("twain", []):
+        name = device.get("name", "")
+        status = device.get("status", "disconnected")
 
-        for device in devices:
-            name = device.get("name", "")
-            status = device.get("status", "disconnected")
+        if not name:
+            continue
 
-            if not name:
-                continue
-
-            options.append({
-                "id": f"{driver}:{name}",
-                "label": f"{name} ({driver.upper()})",
-                "scanner": name,
-                "driver": driver,
-                "status": status,
-            })
+        options.append({
+            "id": f"twain:{name}",
+            "label": name,
+            "scanner": name,
+            "driver": "twain",
+            "status": status,
+        })
 
     selected = next(
         (
@@ -115,14 +111,13 @@ async def get_scanner_options():
 
 
 async def update_scanner_list_devices(
-    type_driver: str,
     update_interval: int = 10,
 ):
-    key = f"scanner_devices:{type_driver}"
+    key = "scanner_devices:twain"
 
     while True:
         try:
-            new_data_devices = await getScannerDevices(type_driver)
+            new_data_devices = await getScannerDevices()
 
             value = await r.get(key)
 
@@ -165,8 +160,7 @@ async def update_scanner_list_devices(
         except Exception as e:
             log_exception(e, "HUB")
             print(
-                f"Update scanner devices "
-                f"{type_driver} error: {e}"
+                f"Update TWAIN scanner devices error: {e}"
             )
 
         await asyncio.sleep(update_interval)
@@ -175,14 +169,7 @@ async def update_scanner_list_devices(
 async def get_scanner_devices_from_redis():
     result = {}
 
-    for driver in ("wia", "twain"):
-        value = await r.get(
-            f"scanner_devices:{driver}"
-        )
-
-        if value:
-            result[driver] = json.loads(value)
-        else:
-            result[driver] = []
+    value = await r.get("scanner_devices:twain")
+    result["twain"] = json.loads(value) if value else []
 
     return result

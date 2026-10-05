@@ -1,6 +1,6 @@
 import HUB_api from "./base";
 
-export interface Naps2InstalledResponse {
+export interface TwainInstalledResponse {
     installed: boolean;
     message: string;
 }
@@ -8,21 +8,32 @@ export interface Naps2InstalledResponse {
 export interface ScannerDevice {
     name: string;
     status: "connected" | "disconnected";
-    driver: string[];
 }
 
-export interface DevicesListResponse {
-    wia: ScannerDevice[];
-    twain: ScannerDevice[];
-    escl?: ScannerDevice[];
+export interface ScannerOption {
+    id: string;
+    label: string;
+    scanner: string;
+    driver: "twain";
+    status: ScannerDevice["status"];
 }
 
-export async function getNaps2Installed() {
-    const response = await HUB_api.get("/scanner/naps2/installed");
-    return response.data as Naps2InstalledResponse;
+export interface ScannerOptionsResponse {
+    options: ScannerOption[];
+    default: ScannerOption | null;
 }
 
-export async function getDevicesList() {
-    const response = await HUB_api.get("/scanner/naps2/devices");
-    return response.data as DevicesListResponse;
+export async function getTwainInstalled() {
+    const response = await HUB_api.get("/scanner/twain/installed");
+    return response.data as TwainInstalledResponse;
+}
+
+export async function getTwainDevices() {
+    const response = await HUB_api.get<{ twain: ScannerDevice[] }>("/scanner/twain/devices");
+    return response.data;
+}
+
+export async function getTwainOptions() {
+    const response = await HUB_api.get<ScannerOptionsResponse>("/scanner/twain/options");
+    return response.data;
 }

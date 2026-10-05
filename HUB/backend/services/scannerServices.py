@@ -1,17 +1,21 @@
-from typing import Literal
-from backend.services.settingsServices import getNAPS2Path
+# from typing import Literal
+# from backend.services.settingsServices import getNAPS2Path
+# from plugin.Scanner.main import check_naps2_installed, get_list_scanner_devices
+# async def checkNAPS2installed(): ...
+# async def getScannerDevices(type_driver: str = Literal["wia", "twain"]) -> list[str]: ...
 
-# mock:main
-from plugin.Scanner.main import check_naps2_installed, get_list_scanner_devices
+from plugin.Scanner.twain_scanner import get_list_scanner_devices
 
-async def checkNAPS2installed():
-    # Kiểm tra xem đã cài NAPS2 chưa, trả về tuple (bool, str) với bool là trạng thái cài đặt, str là thông báo
-    # path_to_naps2: đường dẫn đến tệp thực thi NAPS2
-    path_to_naps2 = await getNAPS2Path()
-    result, message = check_naps2_installed(path_to_naps2=path_to_naps2)
-    return {"installed": result, "message": message}
 
-async def getScannerDevices(type_driver: str = Literal["wia", "twain"]) -> list[str]:
-    path_to_naps2 = await getNAPS2Path()
-    devices = await get_list_scanner_devices(path_to_naps2=path_to_naps2, type_driver=type_driver)
-    return devices
+async def checkTWAINinstalled() -> dict[str, bool | str]:
+    """Kiểm tra TWAIN bằng cách mở SourceManager và đọc danh sách thiết bị."""
+    devices = await get_list_scanner_devices()
+    return {
+        "installed": bool(devices),
+        "message": "TWAIN scanner ready" if devices else "Không tìm thấy thiết bị TWAIN",
+    }
+
+
+async def getScannerDevices() -> list[str]:
+    """Lấy tên thiết bị từ TWAIN SourceManager, không phụ thuộc NAPS2."""
+    return await get_list_scanner_devices()
