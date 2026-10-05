@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import homeAudio from '../assets/audio/1.mp3';
 import scanAudio from '../assets/audio/2.mp3';
 import scannedAudio from '../assets/audio/3.mp3';
-import followUpAudio from '../assets/audio/4.mp3';
 
 const SCAN_AUDIO_COMPLETE_EVENT = 'hub:scan-audio-complete';
 
@@ -14,52 +13,27 @@ export function notifyScanAudioComplete() {
 export default function UserAudioGuide() {
   const { pathname } = useLocation();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const delayTimerRef = useRef<number | null>(null);
+  const previousPathnameRef = useRef(pathname);
   const revisionRef = useRef(0);
   const [scanCompletion, setScanCompletion] = useState<{
     pathname: string;
     revision: number;
   } | null>(null);
-  const [followUpPathname, setFollowUpPathname] = useState<string | null>(null);
 
   const isScanPage = /^\/(desktop|kiosk)\/scan\/[^/]+/.test(pathname);
   const isHomePage = /^\/(desktop|kiosk)\/?$/.test(pathname);
   const completedOnCurrentPage = scanCompletion?.pathname === pathname;
-  const currentTrack = !isScanPage
-    ? 1
-    : followUpPathname === pathname
-      ? 4
-      : completedOnCurrentPage
-        ? 3
-        : 2;
-  const currentSource = [homeAudio, scanAudio, scannedAudio, followUpAudio][currentTrack - 1];
+  const activeScanCompletionRevision = completedOnCurrentPage ? scanCompletion.revision : 0;
+  const currentTrack = !isScanPage ? 1 : completedOnCurrentPage ? 3 : 2;
+  const currentSource = [homeAudio, scanAudio, scannedAudio][currentTrack - 1];
 
   useEffect(() => {
-    if (delayTimerRef.current !== null) {
-      window.clearTimeout(delayTimerRef.current);
-      delayTimerRef.current = null;
-    }
     setScanCompletion(null);
-    setFollowUpPathname(null);
-
-    return () => {
-      if (delayTimerRef.current !== null) {
-        window.clearTimeout(delayTimerRef.current);
-        delayTimerRef.current = null;
-      }
-    };
   }, [pathname]);
 
   useEffect(() => {
     const handleScanComplete = () => {
       if (!isScanPage) return;
-
-      if (delayTimerRef.current !== null) {
-        window.clearTimeout(delayTimerRef.current);
-        delayTimerRef.current = null;
-      }
-
-      setFollowUpPathname(null);
       setScanCompletion({ pathname, revision: ++revisionRef.current });
     };
 
@@ -73,45 +47,59 @@ export default function UserAudioGuide() {
 
     audio.pause();
     audio.currentTime = 0;
-    void audio.play().catch(() => undefined);
+    if (completedOnCurrentPage) {
+      void audio.play().catch((error: unknown) => {
+        console.error('Unable to play scan completion audio:', error);
+      });
+    }
 
     return () => audio.pause();
-  }, [currentSource, currentTrack, completedOnCurrentPage ? scanCompletion?.revision : 0]);
+  }, [currentSource, currentTrack, completedOnCurrentPage, activeScanCompletionRevision]);
+
+  useEffect(() => {
+    const previousPathname = previousPathnameRef.current;
+    previousPathnameRef.current = pathname;
+
+    const cameFromHomePage = /^\/(desktop|kiosk)\/?$/.test(previousPathname);
+    if (!cameFromHomePage || !isScanPage || currentTrack !== 2) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = 0;
+    void audio.play().catch((error: unknown) => {
+      console.error('Unable to play scan introduction audio:', error);
+    });
+  }, [currentTrack, isScanPage, pathname]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handlePointerDown = () => {
-      if (isHomePage) {
-        audio.pause();
-        audio.currentTime = 0;
-      } else if (!audio.paused) {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'button, a, input, select, textarea, summary, [role="button"], [role="link"], [tabindex], [contenteditable="true"], audio[controls], video[controls]',
+        )
+      ) {
         return;
       }
-      void audio.play().catch(() => undefined);
-    };
-    const unlockAudio = () => {
-      if (audio.paused) void audio.play().catch(() => undefined);
+
+      if (!isHomePage) return;
+
+      audio.pause();
+      audio.currentTime = 0;
+
+      void audio.play().catch((error: unknown) => {
+        console.error('Unable to play audio guide:', error);
+      });
     };
 
     window.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('keydown', unlockAudio, true);
-
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('keydown', unlockAudio, true);
-    };
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
   }, [isHomePage]);
 
-  const handleAudioEnded = () => {
-    if (currentTrack !== 3) return;
-
-    delayTimerRef.current = window.setTimeout(() => {
-      setFollowUpPathname(pathname);
-      delayTimerRef.current = null;
-    }, 60_000);
-  };
-
-  return <audio ref={audioRef} src={currentSource} preload="auto" onEnded={handleAudioEnded} />;
+  return <audio ref={audioRef} src={currentSource} preload="auto" />;
 }

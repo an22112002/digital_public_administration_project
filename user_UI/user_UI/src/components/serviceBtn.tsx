@@ -14,8 +14,16 @@ export default function ServiceBtn({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className="group relative flex h-full min-h-[140px] cursor-pointer flex-col justify-center rounded-[10px] border border-[#e7a666] bg-[#ffbd89] px-6 py-5 text-center shadow-[0_4px_10px_rgba(15,23,42,0.03)] transition-all duration-300 hover:bg-[#ffeedd] hover:shadow-[0_0_0_3px_rgba(162,74,10,0.15),0_8px_20px_rgba(162,74,10,0.16)]"
       onClick={() => navigate(`${scanPath}/${service.serviceID}`)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigate(`${scanPath}/${service.serviceID}`);
+        }
+      }}
       title="Chọn dịch vụ"
     >
       <span className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-[#d09b6b] bg-[#ffeedd]/80 text-[20px] text-[#a24a0a]/80 shadow-sm opacity-80 transition-all duration-500 animate-pulse">
