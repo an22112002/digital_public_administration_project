@@ -1,3 +1,5 @@
+import sys
+
 from redis.asyncio import Redis
 
 from fastapi import FastAPI
@@ -18,13 +20,22 @@ from backend.services.LLMServices import loadLocalLMStudioModel, unloadLocalLMSt
 from backend.worker.Manager import WorkerManager
 from backend.log.main import install_exception_hooks, log_exception
 
-import webbrowser
+# import webbrowser
+import subprocess
+from pathlib import Path
 import asyncio
 import httpx
 from backend.config import open_settings
 
 redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
 worker_manager = WorkerManager()
+
+BASE_DIR = Path(sys.executable).resolve().parent
+
+edge = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
+
+if not edge.exists():
+    edge = Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -299,7 +310,15 @@ class Backend:
 
             await asyncio.sleep(1)
 
-        webbrowser.open(f"http://localhost:5174/{ui}")
+        # webbrowser.open(f"http://localhost:5174/{ui}")
+        subprocess.Popen([
+            str(edge),
+            "--kiosk",
+            f"http://localhost:5174/{ui}",
+            "--edge-kiosk-type=fullscreen",
+            "--no-first-run",
+            "--disable-session-crashed-bubble",
+        ], cwd=BASE_DIR)
 
     # ==========================================================
     # CLEAR HUB REDIS DATA

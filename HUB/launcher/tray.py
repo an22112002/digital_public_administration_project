@@ -7,7 +7,15 @@ import pystray
 from PIL import Image
 from pystray import MenuItem
 import asyncio
+import subprocess
+from pathlib import Path
 
+BASE_DIR = Path(sys.executable).resolve().parent
+
+edge = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
+
+if not edge.exists():
+    edge = Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")
 
 class TrayApp:
 
@@ -39,10 +47,15 @@ class TrayApp:
 
         self.ui = settings_data.get("settings", {}).get("ui", "desktop")
 
-        webbrowser.open(
-            f"http://{self.ip}:5174/{self.ui}"
-        )
-
+        subprocess.Popen([
+            str(edge),
+            "--kiosk",
+            f"http://localhost:5174/{self.ui}",
+            "--edge-kiosk-type=fullscreen",
+            "--no-first-run",
+            "--disable-session-crashed-bubble",
+        ], cwd=BASE_DIR)
+        
     def quit(self, icon, item):
         print("Stopping HUB...")
         self.set_status(self.STATUS_CLOSING)

@@ -19,7 +19,6 @@ import PreviewModal from '../../components/scanpage/PreviewModal';
 import ScannedFiles from '../../components/scanpage/ScannedFiles';
 import type { DocumentItem, ScanFile, SendFile } from '../../components/scanpage/types';
 import type { SubmissionSet } from '../../components/scanpage/types';
-import { notifyScanAudioComplete } from '../../components/UserAudioGuide';
 
 export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
   const websocket = useRef<WebSocket | null>(null);
@@ -325,7 +324,6 @@ export default function ScanPage({ kiosk = false }: { kiosk?: boolean }) {
 
         case 'success': {
           setScanError(null);
-          notifyScanAudioComplete();
           const images: ScanFile[] = data['images'] ?? [];
           const existingFileUrls = new Set(
             Object.values(scannedFilesBySubmissionSetRef.current)

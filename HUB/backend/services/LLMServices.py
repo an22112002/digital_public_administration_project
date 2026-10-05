@@ -1,7 +1,5 @@
 import requests
-import shutil
 import subprocess
-from pathlib import Path
 from backend.config import open_settings
 
 async def getLMStudioModels() -> list:
@@ -49,16 +47,8 @@ async def loadLocalLMStudioModel():
         llm_model = settings["settings"].get("LLM_model", "qwen3-vl-2b-instruct")
         gpu_use = settings["settings"].get("LLM_gpu_use", 1.0)
         context_length = settings["settings"].get("LLM_context_length", 8192)
-        lms_executable = shutil.which("lms")
-        if lms_executable is None:
-            default_lms_path = Path.home() / ".lmstudio" / "bin" / "lms.exe"
-            if not default_lms_path.is_file():
-                raise FileNotFoundError(
-                    "LM Studio CLI was not found. Install the CLI or add lms to PATH."
-                )
-            lms_executable = str(default_lms_path)
         subprocess.run(
-            [lms_executable, "load", llm_model, f"--gpu={gpu_use}", f"--context-length={context_length}"],
+            ["lms", "load", llm_model, f"--gpu={gpu_use}", f"--context-length={context_length}"],
             check=True
         )
     except subprocess.CalledProcessError as e:

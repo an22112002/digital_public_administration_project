@@ -241,7 +241,7 @@ async def scan_documents_to_folder(
     except Exception as e:
         log_exception(e, "SCANNER")
         print(f"[Scanner] Lỗi khi quét: {e}")
-        return (_scan_error_status(e), f"Lỗi khi quét: {e}")
+        return (_scan_error_status(e), f"Quét thất bại")
         
     finally:
         if root is not None:

@@ -176,6 +176,27 @@
 
         await sleep(100);
 
+        // Một số phiên bản giao diện có ô tìm kiếm trong combobox. Gán giá trị
+        // qua native setter để React cập nhật state và render đúng option.
+        const searchInput = [...window.document.querySelectorAll(
+            'input[role="combobox"], input[type="text"]'
+        )].find(input => {
+            const style = window.getComputedStyle(input);
+            return style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                input.offsetWidth > 0 &&
+                input.offsetHeight > 0 &&
+                input !== document.querySelector(
+                    'input[placeholder="Nhập từ khóa tìm kiếm dịch vụ công"]'
+                );
+        });
+
+        if (searchInput) {
+            searchInput.focus();
+            window.setInputValue(searchInput, selectedText);
+            await sleep(500);
+        }
+
         return true;
     }
     async function waitAndClickOption(text) {
@@ -274,9 +295,9 @@
         //     return;
         // }
         await sleep(2000);
-        const resultProvince = await findAndSelectPosition("-- Chọn Tỉnh/ Thành phố --");
+        const resultProvince = await findAndSelectPosition("-- Chọn Tỉnh/ Thành phố --", province);
         const resultSelectedProvince = await waitAndClickOption(province);
-        const resultCommune = await findAndSelectPosition("-- Chọn Phường/ Xã --");
+        const resultCommune = await findAndSelectPosition("-- Chọn Phường/ Xã --", commune);
         const resultSelectedCommune = await waitAndClickOption(commune);
         await sleep(1000);
         // if (!resultProvince && !resultCommune) {
