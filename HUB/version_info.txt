@@ -17,7 +17,7 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'CÔNG TY TNHH CÔNG NGHỆ PHARMACY VIỆT NAM'),
             StringStruct('FileDescription', 'Phần mềm Kiosk Robot AI'),
-            StringStruct('FileVersion', '1.0.4.0'),
+            StringStruct('FileVersion', '1.0.4.0'), 
             StringStruct('InternalName', 'Phần mềm Kiosk Robot AI'),
             StringStruct('OriginalFilename', 'HUB.exe'),
             StringStruct('ProductName', 'Phần mềm Kiosk Robot AI'),

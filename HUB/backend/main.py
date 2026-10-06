@@ -30,7 +30,15 @@ from backend.config import open_settings
 redis_client = Redis(host=REDIS_HOST, password=REDIS_PASSWORD, port=REDIS_PORT, db=0, decode_responses=True)
 worker_manager = WorkerManager()
 
-BASE_DIR = Path(sys.executable).resolve().parent
+def get_base_dir() -> Path:
+    """Return the application directory in source and PyInstaller builds."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+
+    return Path(__file__).resolve().parents[1]
+
+
+BASE_DIR = get_base_dir()
 
 edge = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 
@@ -139,7 +147,7 @@ class Backend:
         self.add_ping_route()
 
     # ==========================================================
-    # LIFESPAN
+    # LIFESPANnnn
     # ==========================================================
     @asynccontextmanager
     async def lifespan(self, app: FastAPI):

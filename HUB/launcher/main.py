@@ -51,7 +51,7 @@ def main():
         server = uvicorn.Server(config)
 
         tray = TrayApp(server)
-        backend.on_started = lambda: tray.set_status(TrayApp.STATUS_RUNNING)
+        backend.on_started = tray.set_running_status
 
         # ==============================
         # Backend thread
