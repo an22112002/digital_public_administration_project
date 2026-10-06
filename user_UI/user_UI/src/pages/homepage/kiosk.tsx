@@ -53,10 +53,6 @@ export default function KioskHomePage() {
 			setShowGuide(true);
 		}, 60_000);
 
-		const handleTouchStart = () => {
-			setShowGuide(true);
-		};
-
 		const resetIdleTimer = () => {
 			window.clearTimeout(idleTimer);
 			idleTimer = window.setTimeout(() => {
@@ -64,14 +60,12 @@ export default function KioskHomePage() {
 			}, 60_000);
 		};
 
-		const activityEvents = ['mousemove', 'keydown', 'click', 'pointerdown', 'scroll'];
-		window.addEventListener('touchstart', handleTouchStart, { passive: true });
+		const activityEvents = ['mousemove', 'keydown', 'click', 'pointerdown', 'touchstart', 'scroll'];
 		activityEvents.forEach((eventName) => {
 			window.addEventListener(eventName, resetIdleTimer, { passive: true });
 		});
 
 		return () => {
-			window.removeEventListener('touchstart', handleTouchStart);
 			activityEvents.forEach((eventName) => {
 				window.removeEventListener(eventName, resetIdleTimer);
 			});
@@ -404,4 +398,3 @@ export default function KioskHomePage() {
 									`}</style>		</div>
 	);
 }
-
