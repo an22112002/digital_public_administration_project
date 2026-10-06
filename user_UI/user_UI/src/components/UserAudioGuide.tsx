@@ -3,43 +3,17 @@ import { useLocation } from 'react-router-dom';
 import homeAudio from '../assets/audio/1.mp3';
 import scanAudio from '../assets/audio/2.mp3';
 import scannedAudio from '../assets/audio/3.mp3';
-import followUpAudio from '../assets/audio/4.mp3';
 
 const SCAN_AUDIO_COMPLETE_EVENT = 'hub:scan-audio-complete';
 
-/**
- * Báo cho UserAudioGuide rằng lượt quét hiện tại đã hoàn tất.
- *
- * Cách dùng:
- * 1. Render <UserAudioGuide /> một lần ở cấp router/layout, bên trong
- *    BrowserRouter để component có thể đọc pathname hiện tại.
- * 2. Tại nơi nhận được kết quả quét thành công, gọi
- *    notifyScanAudioComplete().
- *
- * Component sẽ chuyển từ audio hướng dẫn quét (track 2) sang audio đã quét
- * (track 3). Audio được thử phát một lần sau 4 giây kể từ khi tải trang.
- * Nếu trình duyệt chặn autoplay, thao tác click hoặc nhấn phím đầu tiên sẽ
- * mở khóa lần phát duy nhất đó.
- */
 export function notifyScanAudioComplete() {
   window.dispatchEvent(new Event(SCAN_AUDIO_COMPLETE_EVENT));
 }
 
-/**
- * Audio guide dùng chung cho các trang /desktop và /kiosk.
- *
- * Component không hiển thị giao diện; chỉ quản lý một thẻ <audio> và tự chọn
- * nội dung dựa trên pathname:
- * - Trang chủ: track 1.
- * - Trang scan trước khi quét xong: track 2.
- * - Sau khi gọi notifyScanAudioComplete(): track 3.
- * Audio không tự phát lại khi route, trạng thái quét hoặc source thay đổi.
- * Thời gian chờ 4 giây giúp trang hoàn tất tải trước lần phát đầu tiên.
- */
 export default function UserAudioGuide() {
   const { pathname } = useLocation();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const hasStartedRef = useRef(false);
+  const previousPathnameRef = useRef(pathname);
   const revisionRef = useRef(0);
   const [scanCompletion, setScanCompletion] = useState<{
     pathname: string;
@@ -47,13 +21,11 @@ export default function UserAudioGuide() {
   } | null>(null);
 
   const isScanPage = /^\/(desktop|kiosk)\/scan\/[^/]+/.test(pathname);
+  const isHomePage = /^\/(desktop|kiosk)\/?$/.test(pathname);
   const completedOnCurrentPage = scanCompletion?.pathname === pathname;
-  const currentTrack = !isScanPage
-    ? 1
-    : completedOnCurrentPage
-      ? 3
-      : 2;
-  const currentSource = [homeAudio, scanAudio, scannedAudio, followUpAudio][currentTrack - 1];
+  const activeScanCompletionRevision = completedOnCurrentPage ? scanCompletion.revision : 0;
+  const currentTrack = !isScanPage ? 1 : completedOnCurrentPage ? 3 : 2;
+  const currentSource = [homeAudio, scanAudio, scannedAudio][currentTrack - 1];
 
   useEffect(() => {
     setScanCompletion(null);
@@ -62,7 +34,6 @@ export default function UserAudioGuide() {
   useEffect(() => {
     const handleScanComplete = () => {
       if (!isScanPage) return;
-
       setScanCompletion({ pathname, revision: ++revisionRef.current });
     };
 
@@ -74,32 +45,61 @@ export default function UserAudioGuide() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const playOnce = () => {
-      if (hasStartedRef.current) return;
+    audio.pause();
+    audio.currentTime = 0;
+    if (completedOnCurrentPage) {
+      void audio.play().catch((error: unknown) => {
+        console.error('Unable to play scan completion audio:', error);
+      });
+    }
 
-      void audio.play()
-        .then(() => {
-          hasStartedRef.current = true;
-        })
-        .catch(() => {
-          // Autoplay may require a user gesture; the listeners below retry once.
-        });
-    };
-    const playTimer = window.setTimeout(() => {
-      playOnce();
-    }, 4_000);
-    const unlockAudio = () => playOnce();
+    return () => audio.pause();
+  }, [currentSource, currentTrack, completedOnCurrentPage, activeScanCompletionRevision]);
 
-    window.addEventListener('pointerdown', unlockAudio, true);
-    window.addEventListener('keydown', unlockAudio, true);
+  useEffect(() => {
+    const previousPathname = previousPathnameRef.current;
+    previousPathnameRef.current = pathname;
 
-    return () => {
-      window.clearTimeout(playTimer);
-      window.removeEventListener('pointerdown', unlockAudio, true);
-      window.removeEventListener('keydown', unlockAudio, true);
+    const cameFromHomePage = /^\/(desktop|kiosk)\/?$/.test(previousPathname);
+    if (!cameFromHomePage || !isScanPage || currentTrack !== 2) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = 0;
+    void audio.play().catch((error: unknown) => {
+      console.error('Unable to play scan introduction audio:', error);
+    });
+  }, [currentTrack, isScanPage, pathname]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'button, a, input, select, textarea, summary, [role="button"], [role="link"], [tabindex], [contenteditable="true"], audio[controls], video[controls]',
+        )
+      ) {
+        return;
+      }
+
+      if (!isHomePage) return;
+
       audio.pause();
+      audio.currentTime = 0;
+
+      void audio.play().catch((error: unknown) => {
+        console.error('Unable to play audio guide:', error);
+      });
     };
-  }, []);
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [isHomePage]);
 
   return <audio ref={audioRef} src={currentSource} preload="auto" />;
 }

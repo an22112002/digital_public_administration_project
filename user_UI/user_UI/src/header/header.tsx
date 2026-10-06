@@ -54,13 +54,7 @@ export default function Header({
         )}
       </div>
 
-      {action ?? (
-        <>
-          {/* <button className="inline-flex items-center gap-2 rounded-full bg-[#edf4ff] px-4 py-2 text-sm font-semibold text-[#2d6cdf] shadow-sm transition hover:bg-[#dfeeff]">
-            Hướng dẫn
-          </button> */}
-        </>
-      )}
+      {action}
     </header>
   )
 }
