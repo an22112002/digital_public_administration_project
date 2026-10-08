@@ -155,6 +155,9 @@ class Backend:
     # ==========================================================
     @asynccontextmanager
     async def lifespan(self, app: FastAPI):
+        if db.pool is None and not db.init_pool():
+            raise RuntimeError("Database connection failed; backend cannot start")
+
         mode = await getMode()
         self.mode = mode.get("mode", "basic")
         self.server_ip = mode.get("server_ip", None)
